@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System;
 using UnityEngine.Networking;
 using System.Text;
+using System.Reflection;
 
 namespace UnityFetch
 {
@@ -195,12 +196,71 @@ namespace UnityFetch
 
             foreach ((string key, object value) in queryParameters)
             {
-                string encodedKey = UnityWebRequest.EscapeURL(key);
-                string encodedValue = UnityWebRequest.EscapeURL(value.ToString());
-                keyValuePairs.Add(encodedKey + "=" + encodedValue);
+                foreach (string kvp in BuildQueryParamKeyValuePair(key, value))
+                {
+                    keyValuePairs.Add(kvp);
+                }
             }
 
             return "?" + string.Join('&', keyValuePairs);
+        }
+
+        private static IEnumerable<string> BuildQueryParamKeyValuePair(string key, object value)
+        {
+            string encodedKey = UnityWebRequest.EscapeURL(key);
+            string encodedValue = null;
+
+            if (value != null)
+            {
+                Type valueType = value.GetType();
+
+                if (valueType.IsValueType)
+                {
+                    encodedValue = UnityWebRequest.EscapeURL(value.ToString());
+                }
+                else if (value is string str)
+                {
+                    encodedValue = UnityWebRequest.EscapeURL(str);
+                }
+                else if (valueType.IsArray)
+                {
+                    Array arr = (Array)value;
+
+                    foreach (object element in arr)
+                    {
+                        if (element != null && !element.GetType().IsValueType)
+                        {
+                            throw new UnityFetchException("Only value types are supported as query string array elements.");
+                        }
+
+                        foreach (string kvp in BuildQueryParamKeyValuePair(key, element))
+                        {
+                            yield return kvp;
+                        }
+                    }
+
+                    yield break;
+                }
+                else if (valueType.IsClass && !valueType.IsAbstract)
+                {
+                    PropertyInfo[] properties = valueType.GetProperties();
+
+                    foreach (PropertyInfo property in properties)
+                    {
+                        string name = property.Name;
+                        object propValue = property.GetValue(value, null);
+
+                        foreach (string kvp in BuildQueryParamKeyValuePair(encodedKey + '.' + name, propValue))
+                        {
+                            yield return kvp;
+                        }
+                    }
+
+                    yield break;
+                }
+            }
+
+            yield return encodedKey + "=" + encodedValue;
         }
     }
 }

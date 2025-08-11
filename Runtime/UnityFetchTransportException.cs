@@ -1,9 +1,8 @@
-﻿using System;
-using UnityEngine.Networking;
+﻿using UnityEngine.Networking;
 
 namespace UnityFetch
 {
-    public class UnityFetchTransportException : Exception
+    public class UnityFetchTransportException : UnityFetchException
     {
         public readonly UnityWebRequest.Result result;
 
