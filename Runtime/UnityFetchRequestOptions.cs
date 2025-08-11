@@ -155,6 +155,11 @@ namespace UnityFetch
             return this;
         }
 
+        public Dictionary<string, string> GetHeaders()
+        {
+            return ConvertParamDictionary(Headers);
+        }
+
         private Dictionary<string, string> ConvertParamDictionary(Dictionary<string, object> parameters)
         {
             Dictionary<string, string> converted = new();

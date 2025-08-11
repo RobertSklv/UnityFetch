@@ -50,10 +50,13 @@ namespace UnityFetch
 
             request.downloadHandler = new DownloadHandlerBuffer();
 
-            foreach ((string key, object value) in opts.Headers)
+            Dictionary<string, string> requestHeaders = opts.GetHeaders();
+            foreach ((string key, string value) in requestHeaders)
             {
-                request.SetRequestHeader(key, value.ToString());
+                request.SetRequestHeader(key, value);
             }
+
+            float startTime = Time.realtimeSinceStartup;
 
             request.SendWebRequest();
 
@@ -62,10 +65,24 @@ namespace UnityFetch
                 await Task.Yield();
             }
 
+            float endTime = Time.realtimeSinceStartup;
+            float timeElapsedSeconds = endTime - startTime;
+            DateTime timestamp = DateTime.Now;
+
             switch (request.result)
             {
                 case UnityWebRequest.Result.Success:
-                    UnityFetchResponse<T> response = GenerateResponse<T>(request, opts);
+                    T? deserializedResponse = opts.JsonSerializer.DeserializeObject<T>(request.downloadHandler.text);
+
+                    UnityFetchResponse<T> response = new(
+                        deserializedResponse,
+                        request.responseCode,
+                        request.downloadHandler.text,
+                        requestHeaders,
+                        request.GetResponseHeaders(),
+                        method,
+                        TimeSpan.FromSeconds(timeElapsedSeconds),
+                        timestamp);
 
                     if (response.IsSuccess)
                     {
@@ -337,17 +354,6 @@ namespace UnityFetch
             globalOptions.SetAbortController(abortController);
 
             return this;
-        }
-
-        private static UnityFetchResponse<T> GenerateResponse<T>(UnityWebRequest request, UnityFetchRequestOptions options)
-        {
-            T? deserializedResponse = options.JsonSerializer.DeserializeObject<T>(request.downloadHandler.text);
-
-            return new UnityFetchResponse<T>(
-                deserializedResponse,
-                request.responseCode,
-                request.downloadHandler.text,
-                request.GetResponseHeaders());
         }
 
         private static string BuildQueryParameters(IDictionary<string, object> queryParameters)
