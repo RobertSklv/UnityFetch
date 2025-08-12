@@ -7,6 +7,7 @@ namespace UnityFetch
     public class UnityFetchRequestOptions
     {
         public string BaseUrl { get; set; } = string.Empty;
+        public List<object> RouteParameters { get; set; } = new();
         public Dictionary<string, object> QueryParameters { get; set; } = new();
         public Dictionary<string, object> Headers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
         public int Timeout { get; set; } = 5000;
@@ -23,6 +24,7 @@ namespace UnityFetch
         {
             UnityFetchRequestOptions clone = new();
             clone.BaseUrl = BaseUrl;
+            clone.RouteParameters = new(RouteParameters);
             clone.QueryParameters = new(QueryParameters);
             clone.Headers = new(Headers);
             clone.Timeout = Timeout;
@@ -64,17 +66,17 @@ namespace UnityFetch
             return SetHeader("Content-Type", contentType);
         }
 
-        public UnityFetchRequestOptions AddParameter(string name, object value)
+        public UnityFetchRequestOptions AddQueryParameter(string name, object value)
         {
-            return AddParameter(name, value.ToString());
+            return AddQueryParameter(name, value.ToString());
         }
 
-        public UnityFetchRequestOptions AddParameter(string name, Func<string> valueCallback)
+        public UnityFetchRequestOptions AddQueryParameter(string name, Func<string> valueCallback)
         {
-            return AddParameter(name, new DynamicValue(valueCallback));
+            return AddQueryParameter(name, new DynamicValue(valueCallback));
         }
 
-        public UnityFetchRequestOptions AddParameters(Dictionary<string, object> parameters)
+        public UnityFetchRequestOptions AddQueryParameters(Dictionary<string, object> parameters)
         {
             foreach ((string name, object value) in parameters)
             {
@@ -90,6 +92,13 @@ namespace UnityFetch
             {
                 QueryParameters.Add(name, value);
             }
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions AddRouteParameter(object value)
+        {
+            RouteParameters.Add(value);
 
             return this;
         }

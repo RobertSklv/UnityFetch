@@ -35,7 +35,11 @@ namespace UnityFetch
             UnityFetchRequestOptions options = globalOptions.Clone();
             optionsCallback?.Invoke(options);
 
-            string url = Util.UriCombine(options.BaseUrl, uri, "?" + Util.EncodeUrlBody(options.QueryParameters));
+            string url = Util.UriCombine(
+                options.BaseUrl,
+                uri,
+                Util.UriCombine(options.RouteParameters.ConvertAll(p => p.ToString())),
+                "?" + Util.EncodeUrlBody(options.QueryParameters));
 
             RequestStrategy requestStrategy = RequestStrategyFactory.Create(body, fileName, options);
 
@@ -134,7 +138,7 @@ namespace UnityFetch
         {
             return Get<T>(uri, options =>
             {
-                options.AddParameters(parameters);
+                options.AddQueryParameters(parameters);
                 optionsCallback?.Invoke(options);
             });
         }
@@ -318,7 +322,7 @@ namespace UnityFetch
         {
             return CoroutineGet(uri, onSuccess, onError, options =>
             {
-                options.AddParameters(parameters);
+                options.AddQueryParameters(parameters);
                 optionsCallback?.Invoke(options);
             });
         }
