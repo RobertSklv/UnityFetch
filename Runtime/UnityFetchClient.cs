@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
 using UnityEngine.Networking;
-using System.Text;
-using System.Reflection;
 using System.Collections;
+using UnityFetch.RequestStrategies;
+using UnityFetch.RequestProcessing;
 
 namespace UnityFetch
 {
@@ -29,28 +29,30 @@ namespace UnityFetch
             string uri,
             RequestMethod method,
             object? body = null,
-            Action<UnityFetchRequestOptions>? optionsCallback = null)
+            Action<UnityFetchRequestOptions>? optionsCallback = null,
+            string? fileName = null)
         {
-            UnityFetchRequestOptions opts = globalOptions.Clone();
-            optionsCallback?.Invoke(opts);
+            UnityFetchRequestOptions options = globalOptions.Clone();
+            optionsCallback?.Invoke(options);
 
-            string url = opts.BaseUrl + uri + BuildQueryParameters(opts.QueryParameters);
+            string url = Util.UriCombine(options.BaseUrl, uri, "?" + Util.EncodeUrlBody(options.QueryParameters));
 
-            using UnityWebRequest request = new(url, method.ToString());
-            request.timeout = opts.Timeout;
+            RequestStrategy requestStrategy = RequestStrategyFactory.Create(body, fileName, options);
 
-            opts.AbortController?.AbortSignal.AddListener(() => request.Abort());
+            using UnityWebRequest request = body != null
+                ? requestStrategy.CreateRequest(url, body, fileName, options.Clone())
+                : new UnityWebRequest(url);
 
-            if (body != null)
-            {
-                string serializedPayload = opts.JsonSerializer.SerializeObject(body);
-                byte[] bodyRaw = Encoding.UTF8.GetBytes(serializedPayload);
-                request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            }
+            request.method = method.ToString();
+            request.timeout = options.Timeout;
 
-            request.downloadHandler = new DownloadHandlerBuffer();
+            options.AbortController?.AbortSignal.AddListener(() => request.Abort());
 
-            Dictionary<string, string> requestHeaders = opts.GetHeaders();
+            RequestProcessor requestProcessor = RequestProcessorFactory.Create(method, options.DownloadHandlerType);
+
+            request.downloadHandler = requestProcessor.GetDownloadHandler(options);
+
+            Dictionary<string, string> requestHeaders = options.GetHeaders();
             foreach ((string key, string value) in requestHeaders)
             {
                 request.SetRequestHeader(key, value);
@@ -69,33 +71,34 @@ namespace UnityFetch
             float timeElapsedSeconds = endTime - startTime;
             DateTime timestamp = DateTime.Now;
 
-            switch (request.result)
+            if (request.result == UnityWebRequest.Result.Success)
             {
-                case UnityWebRequest.Result.Success:
-                    T? deserializedResponse = opts.JsonSerializer.DeserializeObject<T>(request.downloadHandler.text);
+                T? responseObject = requestProcessor.GenerateResponse<T>(request, options);
+                string rawResponse = requestProcessor.GetRawResponse(request);
 
-                    UnityFetchResponse<T> response = new(
-                        deserializedResponse,
-                        request.responseCode,
-                        request.downloadHandler.text,
-                        requestHeaders,
-                        request.GetResponseHeaders(),
-                        method,
-                        TimeSpan.FromSeconds(timeElapsedSeconds),
-                        timestamp);
+                UnityFetchResponse<T> response = new(
+                    responseObject,
+                    request.responseCode,
+                    rawResponse,
+                    requestHeaders,
+                    request.GetResponseHeaders(),
+                    Enum.Parse<RequestMethod>(request.method),
+                    TimeSpan.FromSeconds(timeElapsedSeconds),
+                    timestamp);
 
-                    if (response.IsSuccess)
-                    {
-                        opts.SuccessHandlers.ForEach(callback => callback.TryHandle(response, opts.JsonSerializer));
-                    }
-                    else
-                    {
-                        opts.ErrorHandlers.ForEach(callback => callback.TryHandle(response, opts.JsonSerializer));
-                    }
+                if (response.IsSuccess)
+                {
+                    options.SuccessHandlers.ForEach(callback => callback.TryHandle(response, options.JsonSerializer));
+                }
+                else
+                {
+                    options.ErrorHandlers.ForEach(callback => callback.TryHandle(response, options.JsonSerializer));
+                }
 
-                    return response;
-                default: throw new UnityFetchTransportException(request.result);
+                return response;
             }
+
+            throw new UnityFetchTransportException(request.result);
         }
 
         public Task<UnityFetchResponse<object>> Request(
@@ -136,6 +139,31 @@ namespace UnityFetch
             });
         }
 
+        public Task<UnityFetchResponse<Texture2D>> GetTexture(
+            string uri,
+            DownloadedTextureParams downloadedTextureParams = default,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return Get<Texture2D>(uri, options =>
+            {
+                options.UseDownloadHandlerTexture(downloadedTextureParams);
+                optionsCallback?.Invoke(options);
+            });
+        }
+
+        public Task<UnityFetchResponse<object>> GetFile(
+            string uri,
+            string savePath,
+            bool append = false,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return Get<object>(uri, options =>
+            {
+                options.UseDownloadHandlerFile(savePath, append);
+                optionsCallback?.Invoke(options);
+            });
+        }
+
         public Task<UnityFetchResponse<T>> Post<T>(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return Request<T>(uri, RequestMethod.POST, body, optionsCallback);
@@ -144,6 +172,39 @@ namespace UnityFetch
         public Task<UnityFetchResponse<object>> Post(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return Post<object>(uri, body, optionsCallback);
+        }
+
+        public Task<UnityFetchResponse<object>> UploadFile(
+            string uri,
+            byte[] bytes,
+            string mimeType,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return Post<object>(uri, bytes, options =>
+            {
+                options.SetContentType(mimeType);
+                optionsCallback?.Invoke(options);
+            });
+        }
+
+        public Task<UnityFetchResponse<object>> UploadPng(
+            string uri,
+            Texture2D texture,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            byte[] bytes = ImageConversion.EncodeToPNG(texture);
+
+            return UploadFile(uri, bytes, "image/png", optionsCallback);
+        }
+
+        public Task<UnityFetchResponse<object>> UploadJpeg(
+            string uri,
+            Texture2D texture,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            byte[] bytes = ImageConversion.EncodeToJPG(texture);
+
+            return UploadFile(uri, bytes, "image/jpeg", optionsCallback);
         }
 
         public Task<UnityFetchResponse<T>> Put<T>(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
@@ -262,6 +323,35 @@ namespace UnityFetch
             });
         }
 
+        public IEnumerator CoroutineGetTexture(
+            string uri,
+            Action<Texture2D>? onSuccess = null,
+            Action<UnityFetchResponse<Texture2D>>? onError = null,
+            DownloadedTextureParams downloadedTextureParams = default,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return CoroutineGet(uri, onSuccess, onError, options =>
+            {
+                options.UseDownloadHandlerTexture(downloadedTextureParams);
+                optionsCallback?.Invoke(options);
+            });
+        }
+
+        public IEnumerator CoroutineGetFile(
+            string uri,
+            string savePath,
+            bool append = false,
+            Action<Texture2D>? onSuccess = null,
+            Action<UnityFetchResponse<Texture2D>>? onError = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return CoroutineGet(uri, onSuccess, onError, options =>
+            {
+                options.UseDownloadHandlerFile(savePath, append);
+                optionsCallback?.Invoke(options);
+            });
+        }
+
         public IEnumerator CoroutinePost<T>(
             string uri,
             object body,
@@ -280,6 +370,45 @@ namespace UnityFetch
             Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return CoroutinePost<object>(uri, body, onSuccess, onError, optionsCallback);
+        }
+
+        public IEnumerator CoroutineUploadFile(
+            string uri,
+            byte[] bytes,
+            string mimeType,
+            Action<object>? onSuccess = null,
+            Action<UnityFetchResponse<object>>? onError = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return CoroutinePost(uri, bytes, onSuccess, onError, options =>
+            {
+                options.SetContentType(mimeType);
+                optionsCallback?.Invoke(options);
+            });
+        }
+
+        public IEnumerator CoroutineUploadPng(
+            string uri,
+            Texture2D texture,
+            Action<object>? onSuccess = null,
+            Action<UnityFetchResponse<object>>? onError = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            byte[] bytes = ImageConversion.EncodeToPNG(texture);
+
+            return CoroutineUploadFile(uri, bytes, "image/png", onSuccess, onError, optionsCallback);
+        }
+
+        public IEnumerator CoroutineUploadJpeg(
+            string uri,
+            Texture2D texture,
+            Action<object>? onSuccess = null,
+            Action<UnityFetchResponse<object>>? onError = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            byte[] bytes = ImageConversion.EncodeToJPG(texture);
+
+            return CoroutineUploadFile(uri, bytes, "image/jpeg", onSuccess, onError, optionsCallback);
         }
 
         public IEnumerator CoroutinePut<T>(
@@ -354,84 +483,6 @@ namespace UnityFetch
             globalOptions.SetAbortController(abortController);
 
             return this;
-        }
-
-        private static string BuildQueryParameters(IDictionary<string, object> queryParameters)
-        {
-            if (queryParameters.Count == 0)
-            {
-                return string.Empty;
-            }
-
-            List<string> keyValuePairs = new();
-
-            foreach ((string key, object value) in queryParameters)
-            {
-                foreach (string kvp in BuildQueryParamKeyValuePair(key, value))
-                {
-                    keyValuePairs.Add(kvp);
-                }
-            }
-
-            return "?" + string.Join('&', keyValuePairs);
-        }
-
-        private static IEnumerable<string> BuildQueryParamKeyValuePair(string key, object value)
-        {
-            string encodedKey = UnityWebRequest.EscapeURL(key);
-            string encodedValue = null;
-
-            if (value != null)
-            {
-                Type valueType = value.GetType();
-
-                if (valueType.IsValueType)
-                {
-                    encodedValue = UnityWebRequest.EscapeURL(value.ToString());
-                }
-                else if (value is string str)
-                {
-                    encodedValue = UnityWebRequest.EscapeURL(str);
-                }
-                else if (valueType.IsArray)
-                {
-                    Array arr = (Array)value;
-
-                    foreach (object element in arr)
-                    {
-                        if (element != null && !element.GetType().IsValueType)
-                        {
-                            throw new UnityFetchException("Only value types are supported as query string array elements.");
-                        }
-
-                        foreach (string kvp in BuildQueryParamKeyValuePair(key, element))
-                        {
-                            yield return kvp;
-                        }
-                    }
-
-                    yield break;
-                }
-                else if (valueType.IsClass && !valueType.IsAbstract)
-                {
-                    PropertyInfo[] properties = valueType.GetProperties();
-
-                    foreach (PropertyInfo property in properties)
-                    {
-                        string name = property.Name;
-                        object propValue = property.GetValue(value, null);
-
-                        foreach (string kvp in BuildQueryParamKeyValuePair(encodedKey + '.' + name, propValue))
-                        {
-                            yield return kvp;
-                        }
-                    }
-
-                    yield break;
-                }
-            }
-
-            yield return encodedKey + "=" + encodedValue;
         }
     }
 }

@@ -1,19 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
+using UnityEngine.Networking;
 
 namespace UnityFetch
 {
     public class UnityFetchRequestOptions
     {
-        public string BaseUrl { get; internal set; } = string.Empty;
-        public Dictionary<string, object> QueryParameters { get; internal set; } = new();
-        public Dictionary<string, object> Headers { get; internal set; } = new();
-        public int Timeout { get; internal set; } = 5000;
-        public IJsonSerializer JsonSerializer { get; internal set; } = new DefaultUnityJsonSerializer();
-        public List<UnityFetchResponseHandler> SuccessHandlers { get; internal set; } = new();
-        public List<UnityFetchResponseHandler> ErrorHandlers { get; internal set; } = new();
-        public AbortController? AbortController { get; internal set; }
+        public string BaseUrl { get; set; } = string.Empty;
+        public Dictionary<string, object> QueryParameters { get; set; } = new();
+        public Dictionary<string, object> Headers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public int Timeout { get; set; } = 5000;
+        public IJsonSerializer JsonSerializer { get; set; } = new DefaultUnityJsonSerializer();
+        public List<UnityFetchResponseHandler> SuccessHandlers { get; set; } = new();
+        public List<UnityFetchResponseHandler> ErrorHandlers { get; set; } = new();
+        public AbortController? AbortController { get; set; }
+        public DownloadHandlerType DownloadHandlerType { get; set; } = DownloadHandlerType.Json;
+        public DownloadedTextureParams DownloadedTextureParams { get; set; } = new();
+        public string? DownloadedFileSavePath { get; set; }
+        public bool DownloadedFileAppend { get; set; }
 
         internal UnityFetchRequestOptions Clone()
         {
@@ -26,6 +30,10 @@ namespace UnityFetch
             clone.SuccessHandlers = new(SuccessHandlers);
             clone.ErrorHandlers = new(ErrorHandlers);
             clone.AbortController = AbortController;
+            clone.DownloadHandlerType = DownloadHandlerType;
+            clone.DownloadedTextureParams = DownloadedTextureParams;
+            clone.DownloadedFileSavePath = DownloadedFileSavePath;
+            clone.DownloadedFileAppend = DownloadedFileAppend;
 
             return clone;
         }
@@ -51,6 +59,11 @@ namespace UnityFetch
             return this;
         }
 
+        public UnityFetchRequestOptions SetContentType(string contentType)
+        {
+            return SetHeader("Content-Type", contentType);
+        }
+
         public UnityFetchRequestOptions AddParameter(string name, object value)
         {
             return AddParameter(name, value.ToString());
@@ -73,7 +86,7 @@ namespace UnityFetch
 
         public UnityFetchRequestOptions AddParameters(object parameters)
         {
-            foreach ((string name, object value) in GetAnonymousObjectParameters(parameters))
+            foreach ((string name, object value) in Util.GetAnonymousObjectParameters(parameters))
             {
                 QueryParameters.Add(name, value);
             }
@@ -91,6 +104,59 @@ namespace UnityFetch
         public UnityFetchRequestOptions SetJsonSerializer(IJsonSerializer jsonSerializer)
         {
             JsonSerializer = jsonSerializer;
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions SetAbortController(AbortController? abortController)
+        {
+            AbortController = abortController;
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions SetDownloadHandlerType(DownloadHandlerType downloadHandlerType)
+        {
+            DownloadHandlerType = downloadHandlerType;
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions UseDownloadHandlerTexture(DownloadedTextureParams downloadedTextureParams)
+        {
+            DownloadHandlerType = DownloadHandlerType.Texture;
+            DownloadedTextureParams = downloadedTextureParams;
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions UseDownloadHandlerTexture(Action<DownloadedTextureParams> downloadedTextureParamsCallback)
+        {
+            DownloadHandlerType = DownloadHandlerType.Texture;
+            downloadedTextureParamsCallback(DownloadedTextureParams);
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions SetDownloadedFileSavePath(string downloadedFileSavePath)
+        {
+            DownloadedFileSavePath = downloadedFileSavePath;
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions SetDownloadedFileAppend(bool downloadedFileAppend)
+        {
+            DownloadedFileAppend = downloadedFileAppend;
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions UseDownloadHandlerFile(string savePath, bool append)
+        {
+            DownloadHandlerType = DownloadHandlerType.File;
+            DownloadedFileSavePath = savePath;
+            DownloadedFileAppend = append;
 
             return this;
         }
@@ -148,45 +214,9 @@ namespace UnityFetch
             return OnError(callback);
         }
 
-        public UnityFetchRequestOptions SetAbortController(AbortController? abortController)
-        {
-            AbortController = abortController;
-
-            return this;
-        }
-
         public Dictionary<string, string> GetHeaders()
         {
-            return ConvertParamDictionary(Headers);
-        }
-
-        private Dictionary<string, string> ConvertParamDictionary(Dictionary<string, object> parameters)
-        {
-            Dictionary<string, string> converted = new();
-
-            foreach ((string key, object value) in parameters)
-            {
-                converted.Add(key, value.ToString());
-            }
-
-            return converted;
-        }
-
-        private Dictionary<string, object> GetAnonymousObjectParameters(object parameters)
-        {
-            Dictionary<string, object> converted = new();
-
-            PropertyInfo[] properties = parameters.GetType().GetProperties();
-
-            foreach (PropertyInfo property in properties)
-            {
-                string name = property.Name;
-                object value = property.GetValue(parameters, null);
-
-                converted.Add(name, value);
-            }
-
-            return converted;
+            return Util.ConvertParamDictionary(Headers);
         }
     }
 }
