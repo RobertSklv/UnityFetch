@@ -103,6 +103,13 @@ namespace UnityFetch
             return this;
         }
 
+        public UnityFetchRequestOptions AddRouteParameters(IEnumerable<object> value)
+        {
+            RouteParameters.AddRange(value);
+
+            return this;
+        }
+
         public UnityFetchRequestOptions SetTimeout(int milliseconds)
         {
             Timeout = milliseconds;

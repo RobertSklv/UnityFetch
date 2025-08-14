@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
 using System;
+using System.Collections;
 
 namespace UnityFetch
 {
@@ -17,37 +18,79 @@ namespace UnityFetch
 
         protected Task Request<TRequestModel>(TRequestModel requestBody, params object[] parameters)
         {
-            return MakeRequest<object>(new(), requestBody, parameters);
+            return AsyncRequest<object>(new(), requestBody, exceptionBasedErrorHandling: true, parameters);
         }
 
         protected Task<TResponseModel> Request<TRequestModel, TResponseModel>(TRequestModel requestBody, params object[] parameters)
         {
-            return MakeRequest<TResponseModel>(new(), requestBody, parameters);
+            return AsyncRequest<TResponseModel>(new(), requestBody, exceptionBasedErrorHandling: true, parameters);
         }
 
         protected Task<TResponseModel> Request<TResponseModel>(params object[] parameters)
         {
-            return MakeRequest<TResponseModel>(new(), null, parameters);
+            return AsyncRequest<TResponseModel>(new(), null, exceptionBasedErrorHandling: true, parameters);
         }
 
         protected Task<TResponseModel> Request<TResponseModel>()
         {
-            return MakeRequest<TResponseModel>(new(), null, new object[] { });
+            return AsyncRequest<TResponseModel>(new(), null, exceptionBasedErrorHandling: true, new object[] { });
         }
 
-        protected Task Request(object requestBody, params object[] parameters)
+        protected Task Request(params object[] parameters)
         {
-            return MakeRequest<object>(new(), requestBody, parameters);
+            return AsyncRequest<object>(new(), null, exceptionBasedErrorHandling: true, parameters);
         }
 
-        protected Task<TResponseModel> RequestParametersOnly<TResponseModel>(params object[] parameters)
+        protected Task<UnityFetchResponse<object>> RequestVerbose<TRequestModel>(TRequestModel requestBody, params object[] parameters)
         {
-            return MakeRequest<TResponseModel>(new(), null, parameters);
+            return AsyncRequestVerbose<object>(new(), requestBody, exceptionBasedErrorHandling: false, parameters);
         }
 
-        protected Task RequestParametersOnly(params object[] parameters)
+        protected Task<UnityFetchResponse<TResponseModel>> RequestVerbose<TRequestModel, TResponseModel>(TRequestModel requestBody, params object[] parameters)
         {
-            return MakeRequest<object>(new(), null, parameters);
+            return AsyncRequestVerbose<TResponseModel>(new(), requestBody, exceptionBasedErrorHandling: false, parameters);
+        }
+
+        protected Task<UnityFetchResponse<TResponseModel>> RequestVerbose<TResponseModel>(params object[] parameters)
+        {
+            return AsyncRequestVerbose<TResponseModel>(new(), null, exceptionBasedErrorHandling: false, parameters);
+        }
+
+        protected Task<UnityFetchResponse<TResponseModel>> RequestVerbose<TResponseModel>()
+        {
+            return AsyncRequestVerbose<TResponseModel>(new(), null, exceptionBasedErrorHandling: false, new object[] { });
+        }
+
+        protected Task<UnityFetchResponse<object>> RequestVerbose(params object[] parameters)
+        {
+            return AsyncRequestVerbose<object>(new(), null, exceptionBasedErrorHandling: false, parameters);
+        }
+
+        protected UnityFetchCoroutineRequestWrapper<object> CoroutineRequest<TRequestModel>(
+            TRequestModel requestBody,
+            params object[] parameters)
+        {
+            return CoroutineRequest<object>(new(), requestBody, parameters);
+        }
+
+        protected UnityFetchCoroutineRequestWrapper<TResponseModel> CoroutineRequest<TRequestModel, TResponseModel>(TRequestModel requestBody, params object[] parameters)
+        {
+            return CoroutineRequest<TResponseModel>(new(), requestBody, parameters);
+        }
+
+        protected UnityFetchCoroutineRequestWrapper<TResponseModel> CoroutineRequest<TResponseModel>(params object[] parameters)
+        {
+            return CoroutineRequest<TResponseModel>(new(), null, parameters);
+        }
+
+        protected UnityFetchCoroutineRequestWrapper<TResponseModel> CoroutineRequest<TResponseModel>()
+        {
+            return CoroutineRequest<TResponseModel>(new(), null, new object[] { });
+        }
+
+        protected UnityFetchCoroutineRequestWrapper<object> CoroutineRequest(params object[] parameters)
+        {
+            return CoroutineRequest<object>(new(), null, parameters);
         }
 
         protected virtual string GetControllerName()
@@ -72,9 +115,13 @@ namespace UnityFetch
             return route.Replace('{' + param + '}', value);
         }
 
-        private async Task<T> MakeRequest<T>(StackTrace stackTrace, object body, params object[] parameters)
+        private Task<UnityFetchResponse<T>> AsyncRequestVerbose<T>(
+            StackTrace stackTrace,
+            object body,
+            bool exceptionBasedErrorHandling,
+            params object[] parameters)
         {
-            MethodBase actionMethod = stackTrace.GetFrame(3).GetMethod();
+            MethodBase actionMethod = stackTrace.GetFrame(1).GetMethod();
 
             ParameterInfo[] paramInfos = actionMethod.GetParameters();
             List<ParameterInfo> paramInfoList = new(paramInfos);
@@ -105,43 +152,94 @@ namespace UnityFetch
             string controllerName = GetControllerName();
             url ??= Util.UriCombine(controllerName, customActionName ?? actionMethod.Name);
 
-            if (IsDefinedInRoute(url, "resource"))
+            if (IsDefinedInRoute(url, ":resource"))
             {
-                url = AddToRoute(url, "resource", controllerName);
+                url = AddToRoute(url, ":resource", controllerName);
             }
-            else if (IsDefinedInRoute(url, "resources"))
+            else if (IsDefinedInRoute(url, ":resources"))
             {
-                url = AddToRoute(url, "resources", Util.PluralizeWord(controllerName));
+                url = AddToRoute(url, ":resources", Util.PluralizeWord(controllerName));
             }
 
             url = url?.ToLower();
 
-            UnityFetchResponse<T> response = await client.Request<T>(url, method, body, options =>
+            List<object> routeParams = new();
+            Dictionary<string, object> queryParams = new();
+
+            foreach (ParameterInfo p in paramInfoList)
             {
-                foreach (ParameterInfo p in paramInfoList)
+                if (IsDefinedInRoute(url, p.Name))
                 {
-                    if (IsDefinedInRoute(url, p.Name))
+                    url = AddToRoute(url, p.Name, parameters[p.Position].ToString());
+                }
+                else
+                {
+                    InRouteAttribute inRoute = p.GetCustomAttribute<InRouteAttribute>();
+                    if (inRoute != null)
                     {
-                        url = AddToRoute(url, p.Name, parameters[p.Position].ToString());
+                        routeParams.Add(parameters[p.Position]);
                     }
                     else
                     {
-                        InRouteAttribute inRoute = p.GetCustomAttribute<InRouteAttribute>();
-                        if (inRoute != null)
-                        {
-                            options.AddRouteParameter(parameters[p.Position]);
-                        }
-                        else
-                        {
-                            InQueryAttribute inQuery = p.GetCustomAttribute<InQueryAttribute>();
-                            string paramName = inQuery == null || string.IsNullOrEmpty(inQuery.alias) ? p.Name : inQuery.alias;
-                            options.AddQueryParameter(paramName, parameters[p.Position].ToString());
-                        }
+                        InQueryAttribute inQuery = p.GetCustomAttribute<InQueryAttribute>();
+                        string paramName = inQuery == null || string.IsNullOrEmpty(inQuery.alias) ? p.Name : inQuery.alias;
+                        queryParams.Add(paramName, parameters[p.Position]);
                     }
                 }
+            }
+
+            return client.Request<T>(url, method, body, options =>
+            {
+                actionAttribute?.Options?.Invoke(options);
+
+                options.AddRouteParameters(routeParams);
+                options.AddQueryParameters(queryParams);
+
+                if (exceptionBasedErrorHandling)
+                {
+                    options.OnError((response) =>
+                    {
+                        throw new UnityFetchRequestException(response);
+                    });
+                }
             });
+        }
+
+        private async Task<T> AsyncRequest<T>(
+            StackTrace stackTrace,
+            object body,
+            bool exceptionBasedErrorHandling,
+            params object[] parameters)
+        {
+            UnityFetchResponse<T> response = await AsyncRequestVerbose<T>(stackTrace, body, exceptionBasedErrorHandling, parameters);
 
             return response.content;
+        }
+
+        private UnityFetchCoroutineRequestWrapper<T> CoroutineRequest<T>(
+            StackTrace stackTrace,
+            object body,
+            params object[] parameters)
+        {
+            Task<UnityFetchResponse<T>> requestTask = AsyncRequestVerbose<T>(stackTrace, body, exceptionBasedErrorHandling: false, parameters);
+            UnityFetchCoroutineRequestWrapper<T> requestWrapper = new();
+
+            void onSuccess(T obj)
+            {
+                requestWrapper?.onSuccess(obj);
+                requestWrapper?.SetResponse(requestTask.Result);
+            }
+
+            void onError(UnityFetchResponse<T> res)
+            {
+                requestWrapper?.onError(res);
+                requestWrapper?.SetResponse(requestTask.Result);
+            }
+
+            IEnumerator routine = client.CoroutineRequest(requestTask, onSuccess, onError);
+            requestWrapper.routine = routine;
+
+            return requestWrapper;
         }
     }
 }

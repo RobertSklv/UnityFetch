@@ -10,6 +10,8 @@ namespace UnityFetch
 
         public string Name { get; set; }
 
+        public Action<UnityFetchRequestOptions> Options { get; set; }
+
         public ActionAttribute(RequestMethod method, string route)
         {
             this.method = method;
