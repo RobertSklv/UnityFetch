@@ -4,12 +4,26 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityFetch.Debugging;
 
 namespace UnityFetch
 {
     public static class UF
     {
         private static readonly UnityFetchClient DefaultClient = new();
+
+        public static event Action<UnityFetchRequestInfo> OnRequestStart = delegate { };
+        public static event Action<UnityFetchRequestInfo> OnRequestFinish = delegate { };
+
+        public static void NotifyRequestStart(UnityFetchRequestInfo requestInfo)
+        {
+            OnRequestStart(requestInfo);
+        }
+
+        public static void NotifyRequestFinish(UnityFetchRequestInfo requestInfo)
+        {
+            OnRequestFinish(requestInfo);
+        }
 
         public static Task<UnityFetchResponse<object>> Request(
             string uri,

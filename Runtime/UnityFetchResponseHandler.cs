@@ -4,7 +4,7 @@ namespace UnityFetch
 {
     public abstract class UnityFetchResponseHandler
     {
-        internal abstract bool TryHandle(UnityFetchResponse errorResponse, IJsonSerializer jsonSerializer);
+        internal abstract bool TryHandle(UnityFetchResponse errorResponse, UnityFetchRequestOptions options);
     }
 
     public class UnityFetchResponseHandler<T> : UnityFetchResponseHandler
@@ -22,7 +22,7 @@ namespace UnityFetch
             fullResponseCallback = callback;
         }
 
-        internal override bool TryHandle(UnityFetchResponse errorResponse, IJsonSerializer jsonSerializer)
+        internal override bool TryHandle(UnityFetchResponse errorResponse, UnityFetchRequestOptions options)
         {
             if (errorResponse is UnityFetchResponse<T> genericResponse)
             {
@@ -34,7 +34,7 @@ namespace UnityFetch
 
             try
             {
-                T? obj = jsonSerializer.DeserializeObject<T>(errorResponse.rawContent);
+                T? obj = options.JsonSerializer.DeserializeObject<T>(errorResponse.rawContent, options.ActionFlags);
 
                 if (simpleCallback != null)
                 {

@@ -6,6 +6,8 @@ using UnityEngine.Networking;
 using System.Collections;
 using UnityFetch.RequestStrategies;
 using UnityFetch.RequestProcessing;
+using UnityFetch.Debugging;
+using System.Linq;
 
 namespace UnityFetch
 {
@@ -36,10 +38,12 @@ namespace UnityFetch
             optionsCallback?.Invoke(options);
 
             string url = Util.UriCombine(
-                options.BaseUrl,
+                options.BaseUrl.ToString(),
                 uri,
                 Util.UriCombine(options.RouteParameters.ConvertAll(p => p.ToString())),
-                "?" + Util.EncodeUrlBody(options.QueryParameters));
+                options.QueryParameters.Any()
+                    ? "?" + Util.EncodeUrlBody(options.QueryParameters)
+                    : null);
 
             RequestStrategy requestStrategy = RequestStrategyFactory.Create(body, fileName, options);
 
@@ -56,11 +60,21 @@ namespace UnityFetch
 
             request.downloadHandler = requestProcessor.GetDownloadHandler(options);
 
+            UnityFetchRequestInfo requestInfo = new()
+            {
+                url = url,
+                method = method,
+                requestBody = body?.ToString(),
+            };
+            UF.NotifyRequestStart(requestInfo);
+
             Dictionary<string, string> requestHeaders = options.GetHeaders();
             foreach ((string key, string value) in requestHeaders)
             {
                 request.SetRequestHeader(key, value);
             }
+
+            requestInfo.requestHeaders = requestHeaders.ToList().ConvertAll(kvp => new Header(kvp.Key, kvp.Value));
 
             float startTime = Time.realtimeSinceStartup;
 
@@ -73,34 +87,45 @@ namespace UnityFetch
 
             float endTime = Time.realtimeSinceStartup;
             float timeElapsedSeconds = endTime - startTime;
+            TimeSpan timeElapsedTimeSpan = TimeSpan.FromSeconds(timeElapsedSeconds);
             DateTime timestamp = DateTime.Now;
+            Dictionary<string, string> responseHeaders = request.GetResponseHeaders();
+            string rawResponse = requestProcessor.GetRawResponse(request);
+
+            requestInfo.status = request.responseCode;
+            requestInfo.responseBody = rawResponse;
+            requestInfo.time = timeElapsedSeconds.ToString("##0.0 s");
+            requestInfo.responseHeaders = responseHeaders.ToList().ConvertAll(kvp => new Header(kvp.Key, kvp.Value));
 
             if (request.result == UnityWebRequest.Result.Success)
             {
                 T? responseObject = requestProcessor.GenerateResponse<T>(request, options);
-                string rawResponse = requestProcessor.GetRawResponse(request);
 
                 UnityFetchResponse<T> response = new(
                     responseObject,
                     request.responseCode,
                     rawResponse,
                     requestHeaders,
-                    request.GetResponseHeaders(),
+                    responseHeaders,
                     Enum.Parse<RequestMethod>(request.method),
-                    TimeSpan.FromSeconds(timeElapsedSeconds),
+                    timeElapsedTimeSpan,
                     timestamp);
 
                 if (response.IsSuccess)
                 {
-                    options.SuccessHandlers.ForEach(callback => callback.TryHandle(response, options.JsonSerializer));
+                    options.SuccessHandlers.ForEach(callback => callback.TryHandle(response, options));
                 }
                 else
                 {
-                    options.ErrorHandlers.ForEach(callback => callback.TryHandle(response, options.JsonSerializer));
+                    options.ErrorHandlers.ForEach(callback => callback.TryHandle(response, options));
                 }
+
+                UF.NotifyRequestFinish(requestInfo);
 
                 return response;
             }
+
+            UF.NotifyRequestFinish(requestInfo);
 
             throw new UnityFetchTransportException(request.result);
         }

@@ -1,0 +1,24 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Packages/com.robertsklv.unity-fetch/Editor/UI/USS/NetworkInspectorWindow.uss?fileID=7433441132597879392&amp;guid=7429bc0224d9746489d5f637192fe8a6&amp;type=3#NetworkInspectorWindow" />
+    <engine:VisualElement name="panel-root" style="flex-direction: row-reverse; flex-grow: 1;">
+        <engine:TabView name="overview" style="flex-basis: 50%;">
+            <engine:Tab label="Headers" name="headers">
+                <engine:ScrollView class="overview-tab__scroll-view">
+                    <engine:Foldout text="General" name="general" />
+                    <engine:Foldout text="Request Headers" name="request-headers" />
+                    <engine:Foldout text="Response Headers" name="response-headers" />
+                </engine:ScrollView>
+            </engine:Tab>
+            <engine:Tab label="Payload" name="payload" style="flex-grow: 1;">
+                <engine:ScrollView class="overview-tab__scroll-view">
+                    <engine:TextField readonly="true" name="payload-field" label="Payload" multiline="true" select-all-on-focus="false" select-all-on-mouse-up="false" class="code-field" />
+                </engine:ScrollView>
+            </engine:Tab>
+            <engine:Tab label="Response" name="response" style="flex-grow: 1;">
+                <engine:ScrollView class="overview-tab__scroll-view">
+                    <engine:TextField label="Response" name="response-field" readonly="true" multiline="true" select-all-on-focus="false" select-all-on-mouse-up="false" class="code-field" />
+                </engine:ScrollView>
+            </engine:Tab>
+        </engine:TabView>
+    </engine:VisualElement>
+</engine:UXML>

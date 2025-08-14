@@ -6,7 +6,7 @@ namespace UnityFetch.RequestProcessing
     {
         public override T GenerateResponse<T>(UnityWebRequest request, UnityFetchRequestOptions options)
         {
-            return options.JsonSerializer.DeserializeObject<T>(request.downloadHandler.text);
+            return options.JsonSerializer.DeserializeObject<T>(request.downloadHandler.text, options.ActionFlags);
         }
 
         public override string GetRawResponse(UnityWebRequest request)

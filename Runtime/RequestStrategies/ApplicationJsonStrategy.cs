@@ -7,7 +7,7 @@ namespace UnityFetch.RequestStrategies
     {
         public override UnityWebRequest CreateRequest(string url, object body, string? fileName, UnityFetchRequestOptions options)
         {
-            string serializedPayload = options.JsonSerializer.SerializeObject(body);
+            string serializedPayload = options.JsonSerializer.SerializeObject(body, options.ActionFlags);
             byte[] bodyRaw = Encoding.UTF8.GetBytes(serializedPayload);
 
             UnityWebRequest request = new(url);

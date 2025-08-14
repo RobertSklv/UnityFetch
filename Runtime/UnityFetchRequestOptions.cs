@@ -6,7 +6,7 @@ namespace UnityFetch
 {
     public class UnityFetchRequestOptions
     {
-        public string BaseUrl { get; set; } = string.Empty;
+        public object BaseUrl { get; set; } = string.Empty;
         public List<object> RouteParameters { get; set; } = new();
         public Dictionary<string, object> QueryParameters { get; set; } = new();
         public Dictionary<string, object> Headers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -19,6 +19,7 @@ namespace UnityFetch
         public DownloadedTextureParams DownloadedTextureParams { get; set; } = new();
         public string? DownloadedFileSavePath { get; set; }
         public bool DownloadedFileAppend { get; set; }
+        public Dictionary<string, object> ActionFlags { get; set; } = new();
 
         internal UnityFetchRequestOptions Clone()
         {
@@ -36,6 +37,7 @@ namespace UnityFetch
             clone.DownloadedTextureParams = DownloadedTextureParams;
             clone.DownloadedFileSavePath = DownloadedFileSavePath;
             clone.DownloadedFileAppend = DownloadedFileAppend;
+            clone.ActionFlags = new(ActionFlags);
 
             return clone;
         }
@@ -47,16 +49,23 @@ namespace UnityFetch
             return this;
         }
 
+        public UnityFetchRequestOptions SetBaseUrl(Func<string> callback)
+        {
+            BaseUrl = new DynamicValue(callback);
+
+            return this;
+        }
+
         public UnityFetchRequestOptions SetHeader(string name, string value)
         {
-            Headers.Add(name, value);
+            Headers.AddOrUpdate(name, value);
 
             return this;
         }
 
         public UnityFetchRequestOptions SetHeader(string name, Func<string> valueCallback)
         {
-            Headers.Add(name, new DynamicValue(valueCallback));
+            Headers.AddOrUpdate(name, new DynamicValue(valueCallback));
 
             return this;
         }
@@ -68,7 +77,9 @@ namespace UnityFetch
 
         public UnityFetchRequestOptions AddQueryParameter(string name, object value)
         {
-            return AddQueryParameter(name, value.ToString());
+            QueryParameters.AddOrUpdate(name, value);
+
+            return this;
         }
 
         public UnityFetchRequestOptions AddQueryParameter(string name, Func<string> valueCallback)
@@ -80,7 +91,7 @@ namespace UnityFetch
         {
             foreach ((string name, object value) in parameters)
             {
-                QueryParameters.Add(name, value);
+                QueryParameters.AddOrUpdate(name, value);
             }
 
             return this;
@@ -90,7 +101,7 @@ namespace UnityFetch
         {
             foreach ((string name, object value) in Util.GetAnonymousObjectParameters(parameters))
             {
-                QueryParameters.Add(name, value);
+                QueryParameters.AddOrUpdate(name, value);
             }
 
             return this;
@@ -120,6 +131,18 @@ namespace UnityFetch
         public UnityFetchRequestOptions SetJsonSerializer(IJsonSerializer jsonSerializer)
         {
             JsonSerializer = jsonSerializer;
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions ConfigureJsonSerializer<TJsonSerializer>(Action<TJsonSerializer> configure)
+            where TJsonSerializer : IJsonSerializer
+        {
+            if (JsonSerializer is TJsonSerializer s)
+            {
+                configure(s);
+            }
+            else throw new UnityFetchException($"JSON Serializer not of type: {typeof(TJsonSerializer).Name}");
 
             return this;
         }
@@ -173,6 +196,13 @@ namespace UnityFetch
             DownloadHandlerType = DownloadHandlerType.File;
             DownloadedFileSavePath = savePath;
             DownloadedFileAppend = append;
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions SetFlag(string name, object value)
+        {
+            ActionFlags.AddOrUpdate(name, value);
 
             return this;
         }
