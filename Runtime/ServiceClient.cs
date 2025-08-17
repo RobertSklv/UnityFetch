@@ -16,54 +16,54 @@ namespace UnityFetch
             this.client = client;
         }
 
-        protected Task Request<TRequestModel>(TRequestModel requestBody, params object[] parameters)
+        protected Task RequestSimple<TRequestModel>(TRequestModel requestBody, params object[] parameters)
         {
-            return AsyncRequest<object>(new(), requestBody, exceptionBasedErrorHandling: true, parameters);
+            return AsyncRequestSimple<object>(new(), requestBody, exceptionBasedErrorHandling: true, parameters);
         }
 
-        protected Task<TResponseModel> Request<TRequestModel, TResponseModel>(TRequestModel requestBody, params object[] parameters)
+        protected Task<TResponseModel> RequestSimple<TRequestModel, TResponseModel>(TRequestModel requestBody, params object[] parameters)
         {
-            return AsyncRequest<TResponseModel>(new(), requestBody, exceptionBasedErrorHandling: true, parameters);
+            return AsyncRequestSimple<TResponseModel>(new(), requestBody, exceptionBasedErrorHandling: true, parameters);
         }
 
-        protected Task<TResponseModel> Request<TResponseModel>(params object[] parameters)
+        protected Task<TResponseModel> RequestSimple<TResponseModel>(params object[] parameters)
         {
-            return AsyncRequest<TResponseModel>(new(), null, exceptionBasedErrorHandling: true, parameters);
+            return AsyncRequestSimple<TResponseModel>(new(), null, exceptionBasedErrorHandling: true, parameters);
         }
 
-        protected Task<TResponseModel> Request<TResponseModel>()
+        protected Task<TResponseModel> RequestSimple<TResponseModel>()
         {
-            return AsyncRequest<TResponseModel>(new(), null, exceptionBasedErrorHandling: true, new object[] { });
+            return AsyncRequestSimple<TResponseModel>(new(), null, exceptionBasedErrorHandling: true, new object[] { });
         }
 
-        protected Task Request(params object[] parameters)
+        protected Task RequestSimple(params object[] parameters)
         {
-            return AsyncRequest<object>(new(), null, exceptionBasedErrorHandling: true, parameters);
+            return AsyncRequestSimple<object>(new(), null, exceptionBasedErrorHandling: true, parameters);
         }
 
-        protected Task<UnityFetchResponse<object>> RequestVerbose<TRequestModel>(TRequestModel requestBody, params object[] parameters)
+        protected Task<UnityFetchResponse<object>> Request<TRequestModel>(TRequestModel requestBody, params object[] parameters)
         {
-            return AsyncRequestVerbose<object>(new(), requestBody, exceptionBasedErrorHandling: false, parameters);
+            return AsyncRequest<object>(new(), requestBody, exceptionBasedErrorHandling: false, parameters);
         }
 
-        protected Task<UnityFetchResponse<TResponseModel>> RequestVerbose<TRequestModel, TResponseModel>(TRequestModel requestBody, params object[] parameters)
+        protected Task<UnityFetchResponse<TResponseModel>> Request<TRequestModel, TResponseModel>(TRequestModel requestBody, params object[] parameters)
         {
-            return AsyncRequestVerbose<TResponseModel>(new(), requestBody, exceptionBasedErrorHandling: false, parameters);
+            return AsyncRequest<TResponseModel>(new(), requestBody, exceptionBasedErrorHandling: false, parameters);
         }
 
-        protected Task<UnityFetchResponse<TResponseModel>> RequestVerbose<TResponseModel>(params object[] parameters)
+        protected Task<UnityFetchResponse<TResponseModel>> Request<TResponseModel>(params object[] parameters)
         {
-            return AsyncRequestVerbose<TResponseModel>(new(), null, exceptionBasedErrorHandling: false, parameters);
+            return AsyncRequest<TResponseModel>(new(), null, exceptionBasedErrorHandling: false, parameters);
         }
 
-        protected Task<UnityFetchResponse<TResponseModel>> RequestVerbose<TResponseModel>()
+        protected Task<UnityFetchResponse<TResponseModel>> Request<TResponseModel>()
         {
-            return AsyncRequestVerbose<TResponseModel>(new(), null, exceptionBasedErrorHandling: false, new object[] { });
+            return AsyncRequest<TResponseModel>(new(), null, exceptionBasedErrorHandling: false, new object[] { });
         }
 
-        protected Task<UnityFetchResponse<object>> RequestVerbose(params object[] parameters)
+        protected Task<UnityFetchResponse<object>> Request(params object[] parameters)
         {
-            return AsyncRequestVerbose<object>(new(), null, exceptionBasedErrorHandling: false, parameters);
+            return AsyncRequest<object>(new(), null, exceptionBasedErrorHandling: false, parameters);
         }
 
         protected UnityFetchCoroutineRequestWrapper<object> CoroutineRequest<TRequestModel>(
@@ -115,7 +115,7 @@ namespace UnityFetch
             return route.Replace('{' + param + '}', value);
         }
 
-        private Task<UnityFetchResponse<T>> AsyncRequestVerbose<T>(
+        private Task<UnityFetchResponse<T>> AsyncRequest<T>(
             StackTrace stackTrace,
             object body,
             bool exceptionBasedErrorHandling,
@@ -203,13 +203,13 @@ namespace UnityFetch
             });
         }
 
-        private async Task<T> AsyncRequest<T>(
+        private async Task<T> AsyncRequestSimple<T>(
             StackTrace stackTrace,
             object body,
             bool exceptionBasedErrorHandling,
             params object[] parameters)
         {
-            UnityFetchResponse<T> response = await AsyncRequestVerbose<T>(stackTrace, body, exceptionBasedErrorHandling, parameters);
+            UnityFetchResponse<T> response = await AsyncRequest<T>(stackTrace, body, exceptionBasedErrorHandling, parameters);
 
             return response.content;
         }
@@ -219,7 +219,7 @@ namespace UnityFetch
             object body,
             params object[] parameters)
         {
-            Task<UnityFetchResponse<T>> requestTask = AsyncRequestVerbose<T>(stackTrace, body, exceptionBasedErrorHandling: false, parameters);
+            Task<UnityFetchResponse<T>> requestTask = AsyncRequest<T>(stackTrace, body, exceptionBasedErrorHandling: false, parameters);
             UnityFetchCoroutineRequestWrapper<T> requestWrapper = new();
 
             void onSuccess(T obj)

@@ -223,7 +223,7 @@ namespace UnityFetch
             return this;
         }
 
-        public UnityFetchRequestOptions OnSuccess<T>(Action<T> callback)
+        public UnityFetchRequestOptions OnSuccessSimple<T>(Action<T> callback)
         {
             UnityFetchResponseHandler<T> handler = new(callback);
             SuccessHandlers.Add(handler);
@@ -247,7 +247,7 @@ namespace UnityFetch
             return this;
         }
 
-        public UnityFetchRequestOptions OnError<T>(Action<T> callback)
+        public UnityFetchRequestOptions OnErrorSimple<T>(Action<T> callback)
         {
             UnityFetchResponseHandler<T> handler = new(callback);
             ErrorHandlers.Add(handler);
@@ -257,7 +257,7 @@ namespace UnityFetch
 
         public UnityFetchRequestOptions OnApiError(Action<ApiErrorResponse> callback)
         {
-            return OnError(callback);
+            return OnErrorSimple(callback);
         }
 
         public Dictionary<string, string> GetHeaders()

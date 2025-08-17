@@ -25,13 +25,34 @@ namespace UnityFetch
             OnRequestFinish(requestInfo);
         }
 
+        public static Task<UnityFetchResponse<T>> Request<T>(
+            string uri,
+            RequestMethod method,
+            object? body = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null,
+            string? fileName = null)
+        {
+            return DefaultClient.Request<T>(uri, method, body, optionsCallback, fileName);
+        }
+
         public static Task<UnityFetchResponse<object>> Request(
             string uri,
             RequestMethod method,
             object? body = null,
-            Action<UnityFetchRequestOptions>? optionsCallback = null)
+            Action<UnityFetchRequestOptions>? optionsCallback = null,
+            string? fileName = null)
         {
-            return DefaultClient.Request(uri, method, body, optionsCallback);
+            return DefaultClient.Request<object>(uri, method, body, optionsCallback, fileName);
+        }
+
+        public static Task<T> RequestSimple<T>(
+            string uri,
+            RequestMethod method,
+            object? body = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null,
+            string? fileName = null)
+        {
+            return DefaultClient.RequestSimple<T>(uri, method, body, optionsCallback, fileName);
         }
 
         public static Task<UnityFetchResponse<T>> Get<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
@@ -55,12 +76,41 @@ namespace UnityFetch
             return DefaultClient.Get<T>(uri, parameters, optionsCallback);
         }
 
+        public static Task<T> GetSimple<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.GetSimple<T>(uri, optionsCallback);
+        }
+
+        public static Task<T> GetSimple<T>(
+            string uri,
+            object parameters,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.GetSimple<T>(uri, parameters, optionsCallback);
+        }
+
+        public static Task<T> GetSimple<T>(
+            string uri,
+            Dictionary<string, object> parameters,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.GetSimple<T>(uri, parameters, optionsCallback);
+        }
+
         public static Task<UnityFetchResponse<Texture2D>> GetTexture(
             string uri,
             DownloadedTextureParams downloadedTextureParams = default,
             Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return DefaultClient.GetTexture(uri, downloadedTextureParams, optionsCallback);
+        }
+
+        public static Task<Texture2D> GetTextureSimple(
+            string uri,
+            DownloadedTextureParams downloadedTextureParams = default,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.GetTextureSimple(uri, downloadedTextureParams, optionsCallback);
         }
 
         public static Task<UnityFetchResponse<object>> GetFile(
@@ -75,6 +125,11 @@ namespace UnityFetch
         public static Task<UnityFetchResponse<T>> Post<T>(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return DefaultClient.Post<T>(uri, body, optionsCallback);
+        }
+
+        public static Task<T> PostSimple<T>(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.PostSimple<T>(uri, body, optionsCallback);
         }
 
         public static Task<UnityFetchResponse<object>> Post(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
@@ -112,6 +167,11 @@ namespace UnityFetch
             return DefaultClient.Put<T>(uri, body, optionsCallback);
         }
 
+        public static Task<T> PutSimple<T>(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.PutSimple<T>(uri, body, optionsCallback);
+        }
+
         public static Task<UnityFetchResponse<object>> Put(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return DefaultClient.Put(uri, body, optionsCallback);
@@ -122,9 +182,24 @@ namespace UnityFetch
             return DefaultClient.Patch<T>(uri, body, optionsCallback);
         }
 
+        public static Task<T> PatchSimple<T>(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.PatchSimple<T>(uri, body, optionsCallback);
+        }
+
         public static Task<UnityFetchResponse<object>> Patch(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return DefaultClient.Patch(uri, body, optionsCallback);
+        }
+
+        public static Task<UnityFetchResponse<T>> Delete<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.Delete<T>(uri, optionsCallback);
+        }
+
+        public static Task<T> DeleteSimple<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.DeleteSimple<T>(uri, optionsCallback);
         }
 
         public static Task<UnityFetchResponse<object>> Delete(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
@@ -135,6 +210,16 @@ namespace UnityFetch
         public static Task<UnityFetchResponse<object>> Head(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return DefaultClient.Head(uri, optionsCallback);
+        }
+
+        public static Task<UnityFetchResponse<T>> Options<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.Options<T>(uri, optionsCallback);
+        }
+
+        public static Task<T> OptionsSimple<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.OptionsSimple<T>(uri, optionsCallback);
         }
 
         public static Task<UnityFetchResponse<object>> Options(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
@@ -322,6 +407,15 @@ namespace UnityFetch
             return DefaultClient.CoroutineDelete(uri, onSuccess, onError, optionsCallback);
         }
 
+        public static IEnumerator CoroutineDelete<T>(
+            string uri,
+            Action<T>? onSuccess = null,
+            Action<UnityFetchResponse<T>>? onError = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.CoroutineDelete(uri, onSuccess, onError, optionsCallback);
+        }
+
         public static IEnumerator CoroutineHead(
             string uri,
             Action<object>? onSuccess = null,
@@ -329,6 +423,15 @@ namespace UnityFetch
             Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return DefaultClient.CoroutineHead(uri, onSuccess, onError, optionsCallback);
+        }
+
+        public static IEnumerator CoroutineOptions<T>(
+            string uri,
+            Action<T>? onSuccess = null,
+            Action<UnityFetchResponse<T>>? onError = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return DefaultClient.CoroutineOptions(uri, onSuccess, onError, optionsCallback);
         }
 
         public static IEnumerator CoroutineOptions(

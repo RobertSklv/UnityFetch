@@ -161,9 +161,22 @@ namespace UnityFetch
             string uri,
             RequestMethod method,
             object? body = null,
-            Action<UnityFetchRequestOptions>? optionsCallback = null)
+            Action<UnityFetchRequestOptions>? optionsCallback = null,
+            string? fileName = null)
         {
-            return Request<object>(uri, method, body, optionsCallback);
+            return Request<object>(uri, method, body, optionsCallback, fileName);
+        }
+
+        public async Task<T> RequestSimple<T>(
+            string uri,
+            RequestMethod method,
+            object? body = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null,
+            string? fileName = null)
+        {
+            UnityFetchResponse<T> response = await Request<T>(uri, method, body, optionsCallback, fileName);
+
+            return response.content;
         }
 
         public Task<UnityFetchResponse<T>> Get<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
@@ -195,6 +208,27 @@ namespace UnityFetch
             });
         }
 
+        public async Task<T> GetSimple<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return (await Get<T>(uri, optionsCallback)).content;
+        }
+
+        public async Task<T> GetSimple<T>(
+            string uri,
+            object parameters,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return (await Get<T>(uri, parameters, optionsCallback)).content;
+        }
+
+        public async Task<T> GetSimple<T>(
+            string uri,
+            Dictionary<string, object> parameters,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return (await Get<T>(uri, parameters, optionsCallback)).content;
+        }
+
         public Task<UnityFetchResponse<Texture2D>> GetTexture(
             string uri,
             DownloadedTextureParams downloadedTextureParams = default,
@@ -205,6 +239,14 @@ namespace UnityFetch
                 options.UseDownloadHandlerTexture(downloadedTextureParams);
                 optionsCallback?.Invoke(options);
             });
+        }
+
+        public async Task<Texture2D> GetTextureSimple(
+            string uri,
+            DownloadedTextureParams downloadedTextureParams = default,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return (await GetTexture(uri, downloadedTextureParams, optionsCallback)).content;
         }
 
         public Task<UnityFetchResponse<object>> GetFile(
@@ -228,6 +270,11 @@ namespace UnityFetch
         public Task<UnityFetchResponse<object>> Post(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return Post<object>(uri, body, optionsCallback);
+        }
+
+        public async Task<T> PostSimple<T>(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return (await Post<T>(uri, body, optionsCallback)).content;
         }
 
         public Task<UnityFetchResponse<object>> UploadFile(
@@ -268,6 +315,11 @@ namespace UnityFetch
             return Request<T>(uri, RequestMethod.PUT, body, optionsCallback);
         }
 
+        public async Task<T> PutSimple<T>(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return (await Put<T>(uri, body, optionsCallback)).content;
+        }
+
         public Task<UnityFetchResponse<object>> Put(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return Put<object>(uri, body, optionsCallback);
@@ -278,14 +330,29 @@ namespace UnityFetch
             return Request<T>(uri, RequestMethod.PATCH, body, optionsCallback);
         }
 
+        public async Task<T> PatchSimple<T>(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return (await Patch<T>(uri, body, optionsCallback)).content;
+        }
+
         public Task<UnityFetchResponse<object>> Patch(string uri, object body, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
             return Patch<object>(uri, body, optionsCallback);
         }
 
+        public Task<UnityFetchResponse<T>> Delete<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return Request<T>(uri, RequestMethod.DELETE, null, optionsCallback);
+        }
+
+        public async Task<T> DeleteSimple<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return (await Delete<T>(uri, optionsCallback)).content;
+        }
+
         public Task<UnityFetchResponse<object>> Delete(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
-            return Request<object>(uri, RequestMethod.DELETE, null, optionsCallback);
+            return Delete<object>(uri, optionsCallback);
         }
 
         public Task<UnityFetchResponse<object>> Head(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
@@ -293,9 +360,19 @@ namespace UnityFetch
             return Request<object>(uri, RequestMethod.HEAD, null, optionsCallback);
         }
 
+        public Task<UnityFetchResponse<T>> Options<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return Request<T>(uri, RequestMethod.OPTIONS, null, optionsCallback);
+        }
+
+        public async Task<T> OptionsSimple<T>(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return (await Options<T>(uri, optionsCallback)).content;
+        }
+
         public Task<UnityFetchResponse<object>> Options(string uri, Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
-            return Request<object>(uri, RequestMethod.OPTIONS, null, optionsCallback);
+            return Options<object>(uri, optionsCallback);
         }
 
         public IEnumerator CoroutineRequest<T>(
@@ -507,13 +584,22 @@ namespace UnityFetch
             return CoroutinePatch<object>(uri, body, onSuccess, onError, optionsCallback);
         }
 
+        public IEnumerator CoroutineDelete<T>(
+            string uri,
+            Action<T>? onSuccess = null,
+            Action<UnityFetchResponse<T>>? onError = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return CoroutineRequest(uri, RequestMethod.DELETE, null, onSuccess, onError, optionsCallback);
+        }
+
         public IEnumerator CoroutineDelete(
             string uri,
             Action<object>? onSuccess = null,
             Action<UnityFetchResponse<object>>? onError = null,
             Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
-            return CoroutineRequest(uri, RequestMethod.DELETE, null, onSuccess, onError, optionsCallback);
+            return CoroutineDelete(uri, onSuccess, onError, optionsCallback);
         }
 
         public IEnumerator CoroutineHead(
@@ -525,13 +611,22 @@ namespace UnityFetch
             return CoroutineRequest(uri, RequestMethod.HEAD, null, onSuccess, onError, optionsCallback);
         }
 
+        public IEnumerator CoroutineOptions<T>(
+            string uri,
+            Action<T>? onSuccess = null,
+            Action<UnityFetchResponse<T>>? onError = null,
+            Action<UnityFetchRequestOptions>? optionsCallback = null)
+        {
+            return CoroutineRequest(uri, RequestMethod.OPTIONS, null, onSuccess, onError, optionsCallback);
+        }
+
         public IEnumerator CoroutineOptions(
             string uri,
             Action<object>? onSuccess = null,
             Action<UnityFetchResponse<object>>? onError = null,
             Action<UnityFetchRequestOptions>? optionsCallback = null)
         {
-            return CoroutineRequest(uri, RequestMethod.OPTIONS, null, onSuccess, onError, optionsCallback);
+            return CoroutineOptions(uri, onSuccess, onError, optionsCallback);
         }
 
         public UnityFetchClient SetAbortController(AbortController? abortController)

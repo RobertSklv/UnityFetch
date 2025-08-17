@@ -13,31 +13,31 @@ namespace UnityFetch
         [Action(RequestMethod.GET, route: "/{:resource}/{id}")]
         public Task<TResource> Get([InRoute] int id)
         {
-            return Request<TResource>(id);
+            return RequestSimple<TResource>(id);
         }
 
         [Action(RequestMethod.POST, route: "/{:resource}")]
         public Task<TResource> Create(TResource resource)
         {
-            return Request<TResource, TResource>(resource);
+            return RequestSimple<TResource, TResource>(resource);
         }
 
         [Action(RequestMethod.PUT, route: "/{:resource}/{id}")]
         public Task<TResource> Update([InRoute] int id, TResource resource)
         {
-            return Request<TResource, TResource>(resource, id);
+            return RequestSimple<TResource, TResource>(resource, id);
         }
 
         [Action(RequestMethod.DELETE, route: "/{:resource}/{id}")]
         public Task Delete([InRoute] int id)
         {
-            return Request((object)id);
+            return RequestSimple((object)id);
         }
 
         [Action(RequestMethod.GET, route: "/{:resources}")]
         public Task<List<TResource>> GetAll()
         {
-            return Request<List<TResource>>();
+            return RequestSimple<List<TResource>>();
         }
     }
 }
