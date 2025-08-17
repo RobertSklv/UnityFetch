@@ -64,7 +64,10 @@ namespace UnityFetch
             {
                 url = url,
                 method = method,
-                requestBody = body?.ToString(),
+                requestBody = body != null
+                    ? options.JsonSerializer.SerializeObject(body, options.ActionFlags)
+                    : string.Empty,
+                guid = Guid.NewGuid().ToString(),
             };
             UF.NotifyRequestStart(requestInfo);
 
@@ -89,13 +92,22 @@ namespace UnityFetch
             float timeElapsedSeconds = endTime - startTime;
             TimeSpan timeElapsedTimeSpan = TimeSpan.FromSeconds(timeElapsedSeconds);
             DateTime timestamp = DateTime.Now;
-            Dictionary<string, string> responseHeaders = request.GetResponseHeaders();
+            Dictionary<string, string> responseHeaders = request.GetResponseHeaders() ?? new();
             string rawResponse = requestProcessor.GetRawResponse(request);
 
             requestInfo.status = request.responseCode;
+            requestInfo.statusLabel = request.responseCode != 0
+                ? request.responseCode.ToString()
+                : "(failed)";
             requestInfo.responseBody = rawResponse;
             requestInfo.time = timeElapsedSeconds.ToString("##0.0 s");
             requestInfo.responseHeaders = responseHeaders.ToList().ConvertAll(kvp => new Header(kvp.Key, kvp.Value));
+            requestInfo.size = Util.FormatBytes(request.downloadedBytes);
+            requestInfo.type = ContentTypeMapper.GetFriendlyContentType(
+                responseHeaders.TryGetValue("Content-Type", out string contentType)
+                    ? contentType
+                    : "N/A");
+            requestInfo.finished = true;
 
             if (request.result == UnityWebRequest.Result.Success)
             {
@@ -125,9 +137,24 @@ namespace UnityFetch
                 return response;
             }
 
+            if (request.responseCode == 0)
+            {
+                throw new UnityFetchTransportException(request.result);
+            }
+
+            UnityFetchResponse<T> failResponse = new(
+                default,
+                request.responseCode,
+                rawResponse,
+                requestHeaders,
+                responseHeaders,
+                Enum.Parse<RequestMethod>(request.method),
+                timeElapsedTimeSpan,
+                timestamp);
+
             UF.NotifyRequestFinish(requestInfo);
 
-            throw new UnityFetchTransportException(request.result);
+            return failResponse;
         }
 
         public Task<UnityFetchResponse<object>> Request(
@@ -276,7 +303,7 @@ namespace UnityFetch
             Action<T>? onSuccess = null,
             Action<UnityFetchResponse<T>>? onError = null)
         {
-            if (!task.IsCompleted)
+            while (!task.IsCompleted)
             {
                 yield return null;
             }

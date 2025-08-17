@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Xml.Linq;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -18,11 +20,18 @@ namespace UnityFetch.Editor
         [SerializeField]
         private NetworkSO networkSO;
 
+        [SerializeField]
+        private NetworkInspectorSettingsSO networkInspectorSettingsSO;
+
         private VisualElement rootElement;
 
-        private VisualElement overview;
+        private TabView overview;
 
         private MultiColumnListView multiColumnListView;
+
+        private Toolbar toolbar;
+
+        private ToolbarButton clearRequestsButton;
 
         [MenuItem("Window/UnityFetch/Network Inspector")]
         public static void ShowWindow()
@@ -38,43 +47,110 @@ namespace UnityFetch.Editor
 
             root.Add(rootElement);
 
-            overview = rootElement.Q("overview");
+            overview = rootElement.Q<TabView>("overview");
 
             VisualElement panelRoot = rootElement.Q("panel-root");
 
             multiColumnListView = new()
             {
+                name = "request-list",
                 bindingPath = "requests",
                 showBoundCollectionSize = false,
                 virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight
             };
-            multiColumnListView.style.flexBasis = new StyleLength(new Length(50, LengthUnit.Percent));
+            multiColumnListView.style.flexBasis = new Length(100, LengthUnit.Percent);
 
-            multiColumnListView.columns.Add(CreateColumn("method", "Method", 7, 3, 10));
-            multiColumnListView.columns.Add(CreateColumn("url", "Url", 65, 15, 90));
-            multiColumnListView.columns.Add(CreateColumn("status", "Status", 5, 4, 8));
-            multiColumnListView.columns.Add(CreateColumn("type", "Type", 15, 5, 15, rightAlignment: true));
-            multiColumnListView.columns.Add(CreateColumn("size", "Size", 5, 5, 12, rightAlignment: true));
-            multiColumnListView.columns.Add(CreateColumn("time", "Time", 10, 5, 15, rightAlignment: true));
+            SerializedObject so = new(networkSO);
+            multiColumnListView.columns.Add(CreateColumn(so, "method", "Method", 7, 5, 10));
+            multiColumnListView.columns.Add(CreateColumn(so, "url", "Url", 57, 15, 90));
+            multiColumnListView.columns.Add(CreateColumn(so, "statusLabel", "Status", 8, 4, 12));
+            multiColumnListView.columns.Add(CreateColumn(so, "type", "Type", 8, 5, 12, rightAlignment: true));
+            multiColumnListView.columns.Add(CreateColumn(so, "size", "Size", 10, 5, 15, rightAlignment: true));
+            multiColumnListView.columns.Add(CreateColumn(so, "time", "Time", 10, 5, 15, rightAlignment: true));
 
+            multiColumnListView.makeNoneElement = () => null;
+
+            toolbar = new Toolbar();
+            clearRequestsButton = new ToolbarButton();
+            clearRequestsButton.text = "Clear";
+            clearRequestsButton.clicked += ClearRequests;
+
+            ToolbarMenu toolbarMenu = new();
+
+            toolbarMenu.menu.AppendAction("Clear on Play", a =>
+            {
+                networkInspectorSettingsSO.clearOnPlay = !networkInspectorSettingsSO.clearOnPlay;
+            },
+            a => BooleanToDropdownMenuActionStatus(networkInspectorSettingsSO.clearOnPlay));
+            toolbarMenu.menu.AppendAction("Clear on Build", a =>
+            {
+                networkInspectorSettingsSO.clearOnBuild = !networkInspectorSettingsSO.clearOnBuild;
+            },
+            a => BooleanToDropdownMenuActionStatus(networkInspectorSettingsSO.clearOnBuild));
+            toolbarMenu.menu.AppendAction("Clear on Recompile", a =>
+            {
+                networkInspectorSettingsSO.clearOnRecompile = !networkInspectorSettingsSO.clearOnRecompile;
+            },
+            a => BooleanToDropdownMenuActionStatus(networkInspectorSettingsSO.clearOnRecompile));
+
+            toolbar.Add(clearRequestsButton);
+            toolbar.Add(toolbarMenu);
+            panelRoot.Add(toolbar);
             panelRoot.Add(multiColumnListView);
 
-            var so = new SerializedObject(networkSO);
             multiColumnListView.Bind(so);
             multiColumnListView.bindingPath = "requests";
 
             multiColumnListView.selectionChanged += OnRequestSelectionChange;
+
+            UF.OnRequestFinish += RefreshRequestListItems;
         }
 
         void OnDisable()
         {
-            if (multiColumnListView != null)
+            if (multiColumnListView != null) multiColumnListView.selectionChanged -= OnRequestSelectionChange;
+            if (clearRequestsButton != null) clearRequestsButton.clicked -= ClearRequests;
+
+            UF.OnRequestFinish -= RefreshRequestListItems;
+        }
+
+        private DropdownMenuAction.Status BooleanToDropdownMenuActionStatus(bool val)
+        {
+            return val
+                ? DropdownMenuAction.Status.Checked
+                : DropdownMenuAction.Status.Normal;
+        }
+
+        private void ClearRequests()
+        {
+            networkSO.ClearRequests();
+        }
+
+        private void RefreshRequestListItems(UnityFetchRequestInfo requestInfo)
+        {
+            multiColumnListView.RefreshItems();
+        }
+
+        public string GetCellValue(int index, string name)
+        {
+            UnityFetchRequestInfo request = networkSO.requests[index];
+
+            if (char.IsUpper(name[0]))
             {
-                multiColumnListView.selectionChanged -= OnRequestSelectionChange;
+                PropertyInfo prop = request.GetType().GetProperty(name);
+
+                return prop.GetValue(request)?.ToString();
+            }
+            else
+            {
+                FieldInfo field = request.GetType().GetField(name);
+
+                return field.GetValue(request)?.ToString();
             }
         }
 
         public Column CreateColumn(
+            SerializedObject so,
             string name,
             string title,
             float width,
@@ -82,33 +158,84 @@ namespace UnityFetch.Editor
             float maxWidth,
             bool rightAlignment = false)
         {
-            return new Column
+            var col = new Column
             {
                 name = name,
-                bindingPath = name,
                 title = title,
                 stretchable = true,
                 width = new Length(width, LengthUnit.Percent),
                 minWidth = new Length(minWidth, LengthUnit.Percent),
                 maxWidth = new Length(maxWidth, LengthUnit.Percent),
+                bindCell = (VisualElement ve, int index) =>
+                {
+                    Label cell = ve as Label;
+
+                    cell.BindProperty(
+                        so.FindProperty("requests")
+                            .GetArrayElementAtIndex(index)
+                            .FindPropertyRelative(name)
+                    );
+
+                    if (networkSO.requests[index].IsFailed)
+                    {
+                        ve.parent.parent.AddToClassList("request-list-item--error");
+                        ve.parent.parent.RemoveFromClassList("request-list-item--success");
+                    }
+                    else
+                    {
+                        ve.parent.parent.RemoveFromClassList("request-list-item--error");
+                        ve.parent.parent.AddToClassList("request-list-item--success");
+                    }
+                },
                 makeCell = () =>
                 {
-                    Label label = new();
+                    Label cell = new();
+                    cell.AddToClassList("request-list-item__cell");
 
-                    label.style.unityTextAlign = new StyleEnum<TextAnchor>(
+                    cell.AddToClassList(
                         rightAlignment
-                        ? TextAnchor.MiddleRight
-                        : TextAnchor.MiddleLeft);
-                    label.style.textOverflow = new StyleEnum<TextOverflow>(TextOverflow.Ellipsis);
-                    
-                    return label;
+                        ? "request-list-item__cell--align-right"
+                        : "request-list-item__cell--align-left");
+
+                    return cell;
                 }
             };
+
+            return col;
         }
 
         public void OnRequestSelectionChange(IEnumerable<object> selectedItems)
         {
-            SelectRequest(networkSO.requests[multiColumnListView.selectedIndex]);
+            if (multiColumnListView.selectedIndex == -1)
+            {
+                SelectRequest(null);
+            }
+            else
+            {
+                SelectRequest(networkSO.requests[multiColumnListView.selectedIndex]);
+            }
+        }
+
+        public void ShowHideTab(Tab tab, bool visible)
+        {
+            StyleEnum<DisplayStyle> display = visible
+                ? StyleKeyword.Null
+                : DisplayStyle.None;
+
+            if (!visible && overview.activeTab == tab)
+            {
+                foreach (var child in overview.Children())
+                {
+                    if (child is Tab t && t.tabHeader.resolvedStyle.display != DisplayStyle.None)
+                    {
+                        overview.activeTab = t;
+
+                        break;
+                    }
+                }
+            }
+
+            tab.tabHeader.style.display = display;
         }
 
         public void SelectRequest(UnityFetchRequestInfo request)
@@ -125,24 +252,75 @@ namespace UnityFetch.Editor
             general.Clear();
             requestHeaders.Clear();
             responseHeaders.Clear();
-            payloadField.value = "";
-            responseField.value = "";
+            payloadField.value = string.Empty;
+            responseField.value = string.Empty;
 
             if (request == null)
             {
+                overview.style.visibility = Visibility.Hidden;
+                ShowHideTab(headers, false);
+                ShowHideTab(payload, false);
+                ShowHideTab(response, false);
+
                 return;
             }
 
-            KeyValueField url = new("Request URL", request.url);
-            KeyValueField method = new("Request Method", request.method);
-            KeyValueField statusCode = new("Status Code", request.status);
-            KeyValueField remoteAddress = new("Remote Address", request.remoteAddress);
-            KeyValueField referrerPolicy = new("Referrer Policy", request.referrerPolicy);
+            overview.style.visibility = Visibility.Visible;
+            ShowHideTab(headers, true);
 
+            if (!string.IsNullOrEmpty(request.requestBody))
+            {
+                ShowHideTab(payload, true);
+            }
+            else
+            {
+                ShowHideTab(payload, false);
+            }
+
+            if (!string.IsNullOrEmpty(request.responseBody))
+            {
+                ShowHideTab(response, true);
+            }
+            else
+            {
+                ShowHideTab(response, false);
+            }
+
+            KeyValueField url = new("Request URL", request.url);
             general.Add(url);
+            KeyValueField method = new("Request Method", request.method);
             general.Add(method);
-            general.Add(statusCode);
+
+            if (request.status != 0)
+            {
+                string responseStatusLabel = Util.StatusCodeAsLabel(Util.StatusCodeToResponseStatus(request.status));
+
+                StatusCodeCircle circle = new();
+
+                if (request.status >= 400)
+                {
+                    circle.ColorType = StatusCodeCircle.Type.Danger;
+                }
+                else if (request.status >= 300)
+                {
+                    circle.ColorType = StatusCodeCircle.Type.Warning;
+                }
+                else if (request.status >= 200)
+                {
+                    circle.ColorType = StatusCodeCircle.Type.Success;
+                }
+                else if (request.status >= 100)
+                {
+                    circle.ColorType = StatusCodeCircle.Type.Info;
+                }
+
+                KeyValueField statusCode = new("Status Code", circle, request.status + " " + responseStatusLabel);
+                general.Add(statusCode);
+            }
+
+            KeyValueField remoteAddress = new("Remote Address", request.remoteAddress);
             general.Add(remoteAddress);
+            KeyValueField referrerPolicy = new("Referrer Policy", request.referrerPolicy);
             general.Add(referrerPolicy);
 
             request.requestHeaders.ForEach(h => requestHeaders.Add(new KeyValueField(h.name, h.value)));

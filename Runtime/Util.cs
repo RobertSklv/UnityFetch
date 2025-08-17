@@ -154,6 +154,21 @@ namespace UnityFetch
             yield return encodedKey + "=" + encodedValue;
         }
 
+        public static string FormatBytes(ulong bytes)
+        {
+            string[] suffixes = { "kB", "MB", "GB", "TB", "PB", "EB" };
+            int i = 0;
+            double dblBytes = bytes / 1024;
+
+            while (dblBytes >= 1024 && i < suffixes.Length - 1)
+            {
+                dblBytes /= 1024;
+                i++;
+            }
+
+            return $"{dblBytes:0.0} {suffixes[i]}";
+        }
+
         internal static string PluralizeWord(string word)
         {
             if (string.IsNullOrWhiteSpace(word)) return word;
@@ -221,6 +236,87 @@ namespace UnityFetch
         private static bool IsConsonant(char c)
         {
             return "aeiou".IndexOf(c) == -1;
+        }
+
+        internal static string CapitalizeFirstLetter(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+            {
+                return string.Empty;
+            }
+
+            return char.ToUpper(s[0]) + s[1..];
+        }
+
+        public static ResponseStatus StatusCodeToResponseStatus(long statusCode)
+        {
+            return (ResponseStatus)statusCode;
+        }
+
+        public static string StatusCodeAsLabel(ResponseStatus status)
+        {
+            switch (status)
+            {
+                case ResponseStatus.Continue: return "Continue";
+                case ResponseStatus.SwitchingProtocols: return "Switching Protocols";
+                case ResponseStatus.Processing: return "Processing";
+                case ResponseStatus.EarlyHints: return "Early Hints";
+
+                case ResponseStatus.OK: return "OK";
+                case ResponseStatus.Created: return "Created";
+                case ResponseStatus.Accepted: return "Accepted";
+                case ResponseStatus.NonAuthoritativeInformation: return "Non-Authoritative Information";
+                case ResponseStatus.NoContent: return "No Content";
+                case ResponseStatus.ResetContent: return "Reset Content";
+                case ResponseStatus.PartialContent: return "Partial Content";
+                case ResponseStatus.IMUsed: return "IM Used";
+
+                case ResponseStatus.MultipleChoices: return "Multiple Choices";
+                case ResponseStatus.MovedPermanently: return "Moved Permanently";
+                case ResponseStatus.Found: return "Found";
+                case ResponseStatus.SeeOther: return "See Other";
+                case ResponseStatus.NotModified: return "Not Modified";
+                case ResponseStatus.TemporaryRedirect: return "Temporary Redirect";
+                case ResponseStatus.PermanentRedirect: return "Permanent Redirect";
+
+                case ResponseStatus.BadRequest: return "Bad Request";
+                case ResponseStatus.Unauthorized: return "Unauthorized";
+                case ResponseStatus.PaymentRequired: return "Payment Required";
+                case ResponseStatus.Forbidden: return "Forbidden";
+                case ResponseStatus.NotFound: return "Not Found";
+                case ResponseStatus.MethodNotAllowed: return "Method Not Allowed";
+                case ResponseStatus.NotAcceptable: return "Not Acceptable";
+                case ResponseStatus.ProxyAuthenticationRequired: return "Proxy Authentication Required";
+                case ResponseStatus.RequestTimeout: return "Request Timeout";
+                case ResponseStatus.Conflict: return "Conflict";
+                case ResponseStatus.Gone: return "Gone";
+                case ResponseStatus.LengthRequired: return "Length Required";
+                case ResponseStatus.PreconditionFailed: return "Precondition Failed";
+                case ResponseStatus.ContentTooLarge: return "Content Too Large";
+                case ResponseStatus.URITooLong: return "URI Too Long";
+                case ResponseStatus.UnsupportedMediaType: return "Unsupported Media Type";
+                case ResponseStatus.RangeNotSatisfiable: return "Range Not Satisfiable";
+                case ResponseStatus.ExpectationFailed: return "Expectation Failed";
+                case ResponseStatus.MisdirectedRequest: return "Misdirected Request";
+                case ResponseStatus.TooEarly: return "Too Early";
+                case ResponseStatus.UpgradeRequired: return "Upgrade Required";
+                case ResponseStatus.PreconditionRequired: return "Precondition Required";
+                case ResponseStatus.TooManyRequests: return "Too Many Requests";
+                case ResponseStatus.RequestHeaderFieldsTooLarge: return "Request Header Fields Too Large";
+                case ResponseStatus.UnavailableForLegalReasons: return "Unavailable For Legal Reasons";
+
+                case ResponseStatus.InternalServerError: return "Internal Server Error";
+                case ResponseStatus.NotImplemented: return "Not Implemented";
+                case ResponseStatus.BadGateway: return "Bad Gateway";
+                case ResponseStatus.ServiceUnavailable: return "Service Unavailable";
+                case ResponseStatus.GatewayTimeout: return "Gateway Timeout";
+                case ResponseStatus.HTTPVersionNotSupported: return "HTTP Version Not Supported";
+                case ResponseStatus.VariantAlsoNegotiates: return "Variant Also Negotiates";
+                case ResponseStatus.NotExtended: return "Not Extended";
+                case ResponseStatus.NetworkAuthenticationRequired: return "Network Authentication Required";
+
+                default: return string.Empty;
+            }
         }
     }
 }

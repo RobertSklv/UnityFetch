@@ -13,7 +13,7 @@ namespace UnityFetch
         }
 
         public UnityFetchTransportException(UnityWebRequest.Result result)
-            : this(result, UnityWebRequestResultToMessage(result))
+            : this(result, result + ": " + UnityWebRequestResultToMessage(result))
         {
         }
 

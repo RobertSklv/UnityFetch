@@ -158,10 +158,8 @@ namespace UnityFetch
             }
             else if (IsDefinedInRoute(url, ":resources"))
             {
-                url = AddToRoute(url, ":resources", Util.PluralizeWord(controllerName));
+                url = AddToRoute(url, ":resources", Util.CapitalizeFirstLetter(Util.PluralizeWord(controllerName)));
             }
-
-            url = url?.ToLower();
 
             List<object> routeParams = new();
             Dictionary<string, object> queryParams = new();

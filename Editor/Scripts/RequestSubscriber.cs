@@ -14,20 +14,16 @@ namespace UnityFetch.Editor.Scripts
 
         private static void OnRequestStart(UnityFetchRequestInfo requestInfo)
         {
-            string[] guids = AssetDatabase.FindAssets(
-                "t:NetworkSO"
-            );
-
-            string path = AssetDatabase.GUIDToAssetPath(guids[0]);
-
-            NetworkSO networkSO = AssetDatabase.LoadAssetAtPath<NetworkSO>(path);
+            NetworkSO networkSO = StaticScriptableObjectLoader.Load<NetworkSO>();
             networkSO.AddRequest(requestInfo);
             EditorUtility.SetDirty(networkSO);
         }
 
         private static void OnRequestFinish(UnityFetchRequestInfo requestInfo)
         {
-            //TODO
+            NetworkSO networkSO = StaticScriptableObjectLoader.Load<NetworkSO>();
+            networkSO.UpdateRequest(requestInfo);
+            EditorUtility.SetDirty(networkSO);
         }
     }
 }

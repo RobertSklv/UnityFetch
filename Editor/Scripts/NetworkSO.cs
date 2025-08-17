@@ -13,6 +13,17 @@ namespace UnityFetch.Editor.Scripts
             requests.Add(request);
         }
 
+        public void UpdateRequest(UnityFetchRequestInfo request)
+        {
+            UnityFetchRequestInfo existing = requests.Find(r => r.guid == request.guid);
+
+            if (existing == null) return;
+
+            int index = requests.IndexOf(existing);
+            requests.RemoveAt(index);
+            requests.Insert(index, request);
+        }
+
         public void ClearRequests()
         {
             requests.Clear();

@@ -10,7 +10,7 @@ namespace UnityFetch
         public List<object> RouteParameters { get; set; } = new();
         public Dictionary<string, object> QueryParameters { get; set; } = new();
         public Dictionary<string, object> Headers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-        public int Timeout { get; set; } = 5000;
+        public int Timeout { get; set; } = 5;
         public IJsonSerializer JsonSerializer { get; set; } = new DefaultUnityJsonSerializer();
         public List<UnityFetchResponseHandler> SuccessHandlers { get; set; } = new();
         public List<UnityFetchResponseHandler> ErrorHandlers { get; set; } = new();
@@ -121,9 +121,9 @@ namespace UnityFetch
             return this;
         }
 
-        public UnityFetchRequestOptions SetTimeout(int milliseconds)
+        public UnityFetchRequestOptions SetTimeout(int seconds)
         {
-            Timeout = milliseconds;
+            Timeout = seconds;
 
             return this;
         }

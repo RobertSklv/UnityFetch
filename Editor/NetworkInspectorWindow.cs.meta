@@ -6,8 +6,8 @@ MonoImporter:
   defaultReferences:
   - m_ViewDataDictionary: {instanceID: 0}
   - m_VisualTreeAsset: {fileID: 9197481963319205126, guid: 4accc733b3117b7488bd3e7f444638c6, type: 3}
-  - networkCell_url: {fileID: 9197481963319205126, guid: 826ba1b2e8549ac47a365eb1f6db112b, type: 3}
   - networkSO: {fileID: 11400000, guid: c7d80c4715df93d4993e6dca102ea444, type: 2}
+  - networkInspectorSettingsSO: {fileID: 11400000, guid: 9b5d37c3595813d40a6fee257d5862c7, type: 2}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

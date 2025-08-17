@@ -23,6 +23,52 @@
     -unity-font-style: bold;
 }
 
+#request-list .unity-collection-view__item.request-list-item--error:focus:enabled {
+    background-color: rgba(235, 50, 50, 0.1);
+}
+
+.unity-collection-view .unity-collection-view__item--selected.request-list-item--error {
+    background-color: rgba(245, 120, 120, 0.1);
+}
+
+.unity-collection-view:focus:enabled .unity-collection-view__item--selected.request-list-item--error {
+    background-color: rgba(235, 100, 100, 0.2);
+}
+
+#request-list .unity-collection-view__item.request-list-item--error .unity-label {
+    color: rgb(235, 80, 80);
+}
+
+#request-list .unity-collection-view__item.request-list-item--success:focus:enabled {
+    background-color: rgba(50, 235, 50, 0.1);
+}
+
+.unity-collection-view .unity-collection-view__item--selected.request-list-item--success {
+    background-color: rgba(100, 245, 100, 0.05);
+}
+
+.unity-collection-view:focus:enabled .unity-collection-view__item--selected.request-list-item--success {
+    background-color: rgba(50, 235, 50, 0.1);
+}
+
+.request-list-item {
+}
+
+.request-list-item__cell {
+    padding: 1px;
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.request-list-item__cell--align-right {
+    -unity-text-align: middle-right;
+}
+
+.request-list-item__cell--align-left {
+    -unity-text-align: middle-left;
+}
+
 .key-value-field {
     flex-direction: row;
     margin-bottom: 8px;
@@ -35,6 +81,29 @@
 .key-value-field__value {
     white-space: normal;
     flex-shrink: 1;
+}
+
+.key-value-field .status-code-circle {
+    width: 13px;
+    height: 13px;
+    border-radius: 100%;
+    margin-right: 4px;
+}
+
+.key-value-field .status-code-circle--info {
+    background-color: rgb(0, 150, 150);
+}
+
+.key-value-field .status-code-circle--success {
+    background-color: rgb(0, 180, 0);
+}
+
+.key-value-field .status-code-circle--warning {
+    background-color: rgb(210, 170, 0);
+}
+
+.key-value-field .status-code-circle--danger {
+    background-color: rgb(210, 0, 0);
 }
 
 .code-field {

@@ -10,6 +10,7 @@ namespace UnityFetch.Editor.UI.Elements
         public const string ValueClass = Class + "__value";
 
         private readonly string key;
+        private readonly VisualElement decoration;
         private readonly string value;
 
         public KeyValueField()
@@ -17,12 +18,18 @@ namespace UnityFetch.Editor.UI.Elements
             Init();
         }
 
-        public KeyValueField(string key, string value)
+        public KeyValueField(string key, VisualElement decoration, string value)
         {
             this.key = key;
+            this.decoration = decoration;
             this.value = value;
 
             Init();
+        }
+
+        public KeyValueField(string key, string value)
+            : this(key, null, value)
+        {
         }
 
         public KeyValueField(string key, object value)
@@ -41,6 +48,7 @@ namespace UnityFetch.Editor.UI.Elements
             valueLabel.AddToClassList(ValueClass);
 
             Add(keyLabel);
+            if (decoration != null) Add(decoration);
             Add(valueLabel);
         }
     }
