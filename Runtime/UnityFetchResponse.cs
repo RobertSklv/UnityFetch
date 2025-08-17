@@ -21,6 +21,8 @@ namespace UnityFetch
 
         public bool IsSuccess => statusCode >= 200 && statusCode < 300;
 
+        public ResponseStatus ResponseStatus => Util.StatusCodeToResponseStatus(statusCode);
+
         public UnityFetchResponse(
             long statusCode,
             string rawContent,
