@@ -26,7 +26,7 @@ namespace UnityFetch
             return AsyncRequestSimple<TResponseModel>(new(), requestBody, exceptionBasedErrorHandling: true, parameters);
         }
 
-        protected Task<TResponseModel> RequestSimple<TResponseModel>(params object[] parameters)
+        protected Task<TResponseModel> RequestSimpleParamsOnly<TResponseModel>(params object[] parameters)
         {
             return AsyncRequestSimple<TResponseModel>(new(), null, exceptionBasedErrorHandling: true, parameters);
         }
@@ -36,7 +36,7 @@ namespace UnityFetch
             return AsyncRequestSimple<TResponseModel>(new(), null, exceptionBasedErrorHandling: true, new object[] { });
         }
 
-        protected Task RequestSimple(params object[] parameters)
+        protected Task RequestSimpleParamsOnly(params object[] parameters)
         {
             return AsyncRequestSimple<object>(new(), null, exceptionBasedErrorHandling: true, parameters);
         }
@@ -51,7 +51,7 @@ namespace UnityFetch
             return AsyncRequest<TResponseModel>(new(), requestBody, exceptionBasedErrorHandling: false, parameters);
         }
 
-        protected Task<UnityFetchResponse<TResponseModel>> Request<TResponseModel>(params object[] parameters)
+        protected Task<UnityFetchResponse<TResponseModel>> RequestParamsOnly<TResponseModel>(params object[] parameters)
         {
             return AsyncRequest<TResponseModel>(new(), null, exceptionBasedErrorHandling: false, parameters);
         }
@@ -61,7 +61,7 @@ namespace UnityFetch
             return AsyncRequest<TResponseModel>(new(), null, exceptionBasedErrorHandling: false, new object[] { });
         }
 
-        protected Task<UnityFetchResponse<object>> Request(params object[] parameters)
+        protected Task<UnityFetchResponse<object>> RequestParamsOnly(params object[] parameters)
         {
             return AsyncRequest<object>(new(), null, exceptionBasedErrorHandling: false, parameters);
         }
@@ -88,7 +88,7 @@ namespace UnityFetch
             return CoroutineRequest<TResponseModel>(new(), null, new object[] { });
         }
 
-        protected UnityFetchCoroutineRequestWrapper<object> CoroutineRequest(params object[] parameters)
+        protected UnityFetchCoroutineRequestWrapper<object> CoroutineRequestParamsOnly(params object[] parameters)
         {
             return CoroutineRequest<object>(new(), null, parameters);
         }

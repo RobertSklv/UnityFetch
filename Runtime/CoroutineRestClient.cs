@@ -30,7 +30,7 @@ namespace UnityFetch
         [Action(RequestMethod.DELETE, route: "/{:resource}/{id}")]
         public UnityFetchCoroutineRequestWrapper<object> Delete([InRoute] int id)
         {
-            return CoroutineRequest((object)id);
+            return CoroutineRequestParamsOnly((object)id);
         }
 
         [Action(RequestMethod.GET, route: "/{:resources}")]
