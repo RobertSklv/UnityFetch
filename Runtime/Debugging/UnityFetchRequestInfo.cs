@@ -13,10 +13,6 @@ namespace UnityFetch.Debugging
 
         public RequestMethod method;
 
-        public string remoteAddress;
-
-        public string referrerPolicy;
-
         public string requestBody;
 
         public string responseBody;

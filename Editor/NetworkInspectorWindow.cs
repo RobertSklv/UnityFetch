@@ -318,11 +318,6 @@ namespace UnityFetch.Editor
                 general.Add(statusCode);
             }
 
-            KeyValueField remoteAddress = new("Remote Address", request.remoteAddress);
-            general.Add(remoteAddress);
-            KeyValueField referrerPolicy = new("Referrer Policy", request.referrerPolicy);
-            general.Add(referrerPolicy);
-
             request.requestHeaders.ForEach(h => requestHeaders.Add(new KeyValueField(h.name, h.value)));
             request.responseHeaders.ForEach(h => responseHeaders.Add(new KeyValueField(h.name, h.value)));
 
