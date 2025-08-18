@@ -2,9 +2,10 @@
 
 A wrapper for Unity's UnityWebRequest HTTP client, with the goal to make HTTP requests as developer-friendly as possible.
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Unity](https://img.shields.io/badge/unity-6000.0.38f1-blue)
-![Gitea Last Commit (branch)](https://img.shields.io/gitea/last-commit/RobertSklv/UnityFetch/main)
+![GitHub last commit (branch)](https://img.shields.io/github/last-commit/RobertSklv/UnityFetch/main)
+
 
 ## Features
 
