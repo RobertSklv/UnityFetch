@@ -188,7 +188,11 @@ namespace UnityFetch
 
             return client.Request<T>(url, method, body, options =>
             {
-                actionAttribute?.Options?.Invoke(options);
+                if (actionAttribute != null)
+                {
+                    if (actionAttribute.RetryCount != null) options.RetryCount = actionAttribute.RetryCount.Value;
+                    if (actionAttribute.RetryDelay != null) options.RetryDelay = actionAttribute.RetryDelay.Value;
+                }
 
                 options.AddRouteParameters(routeParams);
                 options.AddQueryParameters(queryParams);
