@@ -127,6 +127,7 @@ namespace UnityFetch
                 await Task.Yield();
             }
 
+            context.Result = request.result;
             context.ResponseCode = request.responseCode;
             context.DownloadedBytes = request.downloadedBytes;
             float endTime = Time.realtimeSinceStartup;
