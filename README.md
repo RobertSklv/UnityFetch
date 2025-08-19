@@ -149,7 +149,27 @@ await client.Post("/login", loginCredentials, options =>
 
 ### Request Retries
 
-**TODO**
+To configure retries, simply use the `SetRetry` method:
+
+```csharp
+Player player = await client.GetSimple<Player>("/player/123", options => {
+    options.SetRetry(5, TimeSpan.FromSeconds(2));
+});
+```
+
+The above example request is set to retry up to 5 times, with a 2 second delay between retries.
+
+By default, UnityFetch only retries failed idempotent requests. To override this, use the `ShouldRetry` callback, like so:
+
+```csharp
+Player player = await client.GetSimple<Player>("/player/123", options => {
+    options
+        .SetRetry(5, TimeSpan.FromSeconds(2))
+        .ShouldRetry((RequestContext context) => {
+            return true; // All failed requests are being retried, which is not recommended.
+        });
+});
+```
 
 ### JSON Serialization
 
@@ -300,7 +320,7 @@ You can also configure when should the request list be cleared, or manually clea
 ### Roadmap
 
 #### Planned features & improvements
-- Request retry logic
+- Request polling
 - Request caching
 - Request stack trace in Network Inspector
 - Request logging in Editor

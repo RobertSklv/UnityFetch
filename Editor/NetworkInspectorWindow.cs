@@ -61,12 +61,13 @@ namespace UnityFetch.Editor
             multiColumnListView.style.flexBasis = new Length(100, LengthUnit.Percent);
 
             SerializedObject so = new(networkSO);
-            multiColumnListView.columns.Add(CreateColumn(so, "method", "Method", 7, 5, 10));
-            multiColumnListView.columns.Add(CreateColumn(so, "url", "Url", 57, 15, 90));
-            multiColumnListView.columns.Add(CreateColumn(so, "statusLabel", "Status", 8, 4, 12));
-            multiColumnListView.columns.Add(CreateColumn(so, "type", "Type", 8, 5, 12, rightAlignment: true));
-            multiColumnListView.columns.Add(CreateColumn(so, "size", "Size", 10, 5, 15, rightAlignment: true));
-            multiColumnListView.columns.Add(CreateColumn(so, "time", "Time", 10, 5, 15, rightAlignment: true));
+            multiColumnListView.columns.Add(CreateColumn(so, "method", "Method", 7, 5, 8));
+            multiColumnListView.columns.Add(CreateColumn(so, "url", "Url", 56, 15, 90));
+            multiColumnListView.columns.Add(CreateColumn(so, "statusLabel", "Status", 6, 4, 8));
+            multiColumnListView.columns.Add(CreateColumn(so, "type", "Type", 7, 5, 9, rightAlignment: true));
+            multiColumnListView.columns.Add(CreateColumn(so, "size", "Size", 8, 5, 11, rightAlignment: true));
+            multiColumnListView.columns.Add(CreateColumn(so, "time", "Time", 8, 5, 11, rightAlignment: true));
+            multiColumnListView.columns.Add(CreateColumn(so, "attempt", "Attempt", 8, 5, 11, rightAlignment: true));
 
             multiColumnListView.makeNoneElement = () => null;
 

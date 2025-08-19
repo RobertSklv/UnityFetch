@@ -8,6 +8,7 @@ using UnityFetch.RequestStrategies;
 using UnityFetch.RequestProcessing;
 using UnityFetch.Debugging;
 using System.Linq;
+using System.Globalization;
 
 namespace UnityFetch
 {
@@ -37,47 +38,85 @@ namespace UnityFetch
             UnityFetchRequestOptions options = globalOptions.Clone();
             optionsCallback?.Invoke(options);
 
-            string url = Util.UriCombine(
-                options.BaseUrl.ToString(),
-                uri,
-                Util.UriCombine(options.RouteParameters.ConvertAll(p => p.ToString())),
-                options.QueryParameters.Any()
-                    ? "?" + Util.EncodeUrlBody(options.QueryParameters)
-                    : null);
+            int attempts = 0;
 
-            RequestStrategy requestStrategy = RequestStrategyFactory.Create(body, fileName, options);
+            if (options.RetryCount < 0)
+            {
+                throw new UnityFetchException($"Invalid retry count: {options.RetryCount}");
+            }
+
+            bool aborted = false;
+            options.AbortController?.AbortSignal.AddListener(() => aborted = true);
+
+            Exception? exception = null;
+
+            do
+            {
+                UnityFetchResponse<T>? response = null;
+
+                RequestContext context = new()
+                {
+                    Attempt = ++attempts,
+                    Options = globalOptions.Clone()
+                };
+                optionsCallback?.Invoke(context.Options);
+
+                try
+                {
+                    response = await RequestOnce<T>(context, uri, method, body, fileName);
+                }
+                catch (Exception e)
+                {
+                    exception = e;
+                    context.Exception = e;
+                }
+
+                if ((context.Exception != null || !response.IsSuccess) && options.ShouldRetryCallback(context))
+                {
+                    await Task.Delay((int)options.RetryDelay.TotalMilliseconds);
+                }
+                else if (response != null)
+                {
+                    return response;
+                }
+                else throw context.Exception ?? new UnityFetchException("Unexpected Error: Both response and exception are null!");
+            } while (attempts <= options.RetryCount && !aborted);
+
+            throw exception ?? new UnityFetchException("Unexpected Error: Failed to process.");
+        }
+
+        private async Task<UnityFetchResponse<T>> RequestOnce<T>(
+            RequestContext context,
+            string uri,
+            RequestMethod method,
+            object? body = null,
+            string? fileName = null)
+        {
+            GenerateUrl(context, uri);
+
+            context.RequestStrategy = RequestStrategyFactory.Create(body, fileName, context.Options);
 
             using UnityWebRequest request = body != null
-                ? requestStrategy.CreateRequest(url, body, fileName, options.Clone())
-                : new UnityWebRequest(url);
+                ? context.RequestStrategy.CreateRequest(context.Url, body, fileName, context.Options.Clone())
+                : new UnityWebRequest(context.Url);
 
             request.method = method.ToString();
-            request.timeout = options.Timeout;
+            request.timeout = context.Options.Timeout;
 
-            options.AbortController?.AbortSignal.AddListener(() => request.Abort());
+            context.Options.AbortController?.AbortSignal.AddListener(() => request.Abort());
 
-            RequestProcessor requestProcessor = RequestProcessorFactory.Create(method, options.DownloadHandlerType);
+            context.RequestProcessor = RequestProcessorFactory.Create(method, context.Options.DownloadHandlerType);
 
-            request.downloadHandler = requestProcessor.GetDownloadHandler(options);
+            request.downloadHandler = context.RequestProcessor.GetDownloadHandler(context.Options);
 
-            UnityFetchRequestInfo requestInfo = new()
-            {
-                url = url,
-                method = method,
-                requestBody = body != null
-                    ? options.JsonSerializer.SerializeObject(body, options.ActionFlags)
-                    : string.Empty,
-                guid = Guid.NewGuid().ToString(),
-            };
-            UF.NotifyRequestStart(requestInfo);
-
-            Dictionary<string, string> requestHeaders = options.GetHeaders();
-            foreach ((string key, string value) in requestHeaders)
+            context.RequestHeaders = context.Options.GetHeaders();
+            foreach ((string key, string value) in context.RequestHeaders)
             {
                 request.SetRequestHeader(key, value);
             }
 
-            requestInfo.requestHeaders = requestHeaders.ToList().ConvertAll(kvp => new Header(kvp.Key, kvp.Value));
+            GenerateRequestInfo(context, body);
+            UF.NotifyRequestStart(context.RequestInfo);
 
             float startTime = Time.realtimeSinceStartup;
 
@@ -88,71 +127,107 @@ namespace UnityFetch
                 await Task.Yield();
             }
 
+            context.ResponseCode = request.responseCode;
+            context.DownloadedBytes = request.downloadedBytes;
             float endTime = Time.realtimeSinceStartup;
-            float timeElapsedSeconds = endTime - startTime;
-            TimeSpan timeElapsedTimeSpan = TimeSpan.FromSeconds(timeElapsedSeconds);
-            DateTime timestamp = DateTime.Now;
-            Dictionary<string, string> responseHeaders = request.GetResponseHeaders() ?? new();
-            string rawResponse = requestProcessor.GetRawResponse(request);
+            context.TimeElapsedSeconds = endTime - startTime;
+            context.Timestamp = DateTime.Now;
+            context.ResponseHeaders = request.GetResponseHeaders() ?? new();
+            context.RawResponse = context.RequestProcessor.GetRawResponse(request);
 
-            requestInfo.status = request.responseCode;
-            requestInfo.statusLabel = request.responseCode != 0
-                ? request.responseCode.ToString()
+            UpdateRequestInfo(context);
+            UF.NotifyRequestFinish(context.RequestInfo);
+
+            return ProcessResponse<T>(context, request);
+        }
+
+        private void GenerateUrl(RequestContext context, string uri)
+        {
+            context.Url = Util.UriCombine(
+                context.Options.BaseUrl.ToString(),
+                uri,
+                Util.UriCombine(context.Options.RouteParameters.ConvertAll(p => p.ToString())),
+                context.Options.QueryParameters.Any()
+                    ? "?" + Util.EncodeUrlBody(context.Options.QueryParameters)
+                    : null);
+        }
+
+        private void GenerateRequestInfo(RequestContext context, object? body)
+        {
+            context.RequestInfo = new()
+            {
+                url = context.Url,
+                method = context.Method,
+                requestBody = body != null
+                    ? context.Options.JsonSerializer.SerializeObject(body, context.Options.ActionFlags)
+                    : string.Empty,
+                guid = Guid.NewGuid().ToString(),
+                requestHeaders = context.RequestHeaders.ToList().ConvertAll(kvp => new Header(kvp.Key, kvp.Value)),
+                attempt = context.Attempt,
+            };
+        }
+
+        private void UpdateRequestInfo(RequestContext context)
+        {
+            context.RequestInfo.status = context.ResponseCode;
+            context.RequestInfo.statusLabel = context.ResponseCode != 0
+                ? context.ResponseCode.ToString()
                 : "(failed)";
-            requestInfo.responseBody = rawResponse;
-            requestInfo.time = timeElapsedSeconds.ToString("##0.0 s");
-            requestInfo.responseHeaders = responseHeaders.ToList().ConvertAll(kvp => new Header(kvp.Key, kvp.Value));
-            requestInfo.size = Util.FormatBytes(request.downloadedBytes);
-            requestInfo.type = ContentTypeMapper.GetFriendlyContentType(
-                responseHeaders.TryGetValue("Content-Type", out string contentType)
+            context.RequestInfo.responseBody = context.RawResponse;
+            context.RequestInfo.time = context.TimeElapsedSeconds.ToString("##0.0 s", CultureInfo.InvariantCulture);
+            context.RequestInfo.responseHeaders = context.ResponseHeaders.ToList().ConvertAll(kvp => new Header(kvp.Key, kvp.Value));
+            context.RequestInfo.size = Util.FormatBytes(context.DownloadedBytes);
+            context.RequestInfo.type = ContentTypeMapper.GetFriendlyContentType(
+                context.ResponseHeaders.TryGetValue("Content-Type", out string contentType)
                     ? contentType
                     : "N/A");
-            requestInfo.finished = true;
+            context.RequestInfo.finished = true;
+        }
 
-            if (request.result == UnityWebRequest.Result.Success)
+        private UnityFetchResponse<T> ProcessResponse<T>(RequestContext context, UnityWebRequest request)
+        {
+            TimeSpan timeElapsedTimeSpan = TimeSpan.FromSeconds(context.TimeElapsedSeconds);
+
+            if (context.Result == UnityWebRequest.Result.Success)
             {
-                T? responseObject = requestProcessor.GenerateResponse<T>(request, options);
+                T? responseObject = context.RequestProcessor.GenerateResponse<T>(request, context.Options);
 
                 UnityFetchResponse<T> response = new(
                     responseObject,
-                    request.responseCode,
-                    rawResponse,
-                    requestHeaders,
-                    responseHeaders,
-                    Enum.Parse<RequestMethod>(request.method),
+                    context.ResponseCode,
+                    context.RawResponse,
+                    context.RequestHeaders,
+                    context.ResponseHeaders,
+                    context.Method,
                     timeElapsedTimeSpan,
-                    timestamp);
+                    context.Timestamp);
 
                 if (response.IsSuccess)
                 {
-                    options.SuccessHandlers.ForEach(callback => callback.TryHandle(response, options));
+                    context.Options.SuccessHandlers.ForEach(callback => callback.TryHandle(response, context.Options));
                 }
                 else
                 {
-                    options.ErrorHandlers.ForEach(callback => callback.TryHandle(response, options));
+                    context.Options.ErrorHandlers.ForEach(callback => callback.TryHandle(response, context.Options));
                 }
-
-                UF.NotifyRequestFinish(requestInfo);
 
                 return response;
             }
 
-            if (request.responseCode == 0)
+            if (context.ResponseCode == 0)
             {
-                throw new UnityFetchTransportException(request.result);
+                throw new UnityFetchTransportException(context.Result);
             }
 
             UnityFetchResponse<T> failResponse = new(
                 default,
-                request.responseCode,
-                rawResponse,
-                requestHeaders,
-                responseHeaders,
-                Enum.Parse<RequestMethod>(request.method),
+                context.ResponseCode,
+                context.RawResponse,
+                context.RequestHeaders,
+                context.ResponseHeaders,
+                context.Method,
                 timeElapsedTimeSpan,
-                timestamp);
-
-            UF.NotifyRequestFinish(requestInfo);
+                context.Timestamp);
 
             return failResponse;
         }

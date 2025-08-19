@@ -1,6 +1,6 @@
 {
   "name": "com.robertsklv.unity-fetch",
-  "version": "0.11.6",
+  "version": "0.12.0",
   "displayName": "Unity Fetch",
   "description": "A simple HTTP/REST client for Unity using UnityWebRequest.",
   "unity": "6000.0",

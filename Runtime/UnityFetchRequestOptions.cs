@@ -20,6 +20,9 @@ namespace UnityFetch
         public string? DownloadedFileSavePath { get; set; }
         public bool DownloadedFileAppend { get; set; }
         public Dictionary<string, object> ActionFlags { get; set; } = new();
+        public int RetryCount { get; set; }
+        public TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(1);
+        public Func<RequestContext, bool> ShouldRetryCallback { get; set; } = Util.IsRequestIdempotent;
 
         internal UnityFetchRequestOptions Clone()
         {
@@ -38,6 +41,9 @@ namespace UnityFetch
             clone.DownloadedFileSavePath = DownloadedFileSavePath;
             clone.DownloadedFileAppend = DownloadedFileAppend;
             clone.ActionFlags = new(ActionFlags);
+            clone.RetryCount = RetryCount;
+            clone.RetryDelay = RetryDelay;
+            clone.ShouldRetryCallback = ShouldRetryCallback;
 
             return clone;
         }
@@ -203,6 +209,25 @@ namespace UnityFetch
         public UnityFetchRequestOptions SetFlag(string name, object value)
         {
             ActionFlags.AddOrUpdate(name, value);
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions SetRetry(int retryCount = 3, TimeSpan delay = default)
+        {
+            RetryCount = retryCount;
+
+            if (delay != null)
+            {
+                RetryDelay = delay;
+            }
+
+            return this;
+        }
+
+        public UnityFetchRequestOptions ShouldRetry(Func<RequestContext, bool> shouldRetryCallback)
+        {
+            ShouldRetryCallback = shouldRetryCallback;
 
             return this;
         }

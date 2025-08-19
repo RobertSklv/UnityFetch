@@ -29,6 +29,8 @@ namespace UnityFetch.Debugging
 
         public bool finished;
 
+        public int attempt;
+
         public List<Header> requestHeaders = new();
 
         public List<Header> responseHeaders = new();

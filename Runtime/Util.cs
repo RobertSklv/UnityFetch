@@ -318,5 +318,19 @@ namespace UnityFetch
                 default: return string.Empty;
             }
         }
+
+        public static bool IsRequestIdempotent(RequestContext context)
+        {
+            return IsRequestIdempotent(context.Method);
+        }
+
+        public static bool IsRequestIdempotent(RequestMethod method)
+        {
+            return method == RequestMethod.GET
+                || method == RequestMethod.PUT
+                || method == RequestMethod.DELETE
+                || method == RequestMethod.HEAD
+                || method == RequestMethod.OPTIONS;
+        }
     }
 }
