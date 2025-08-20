@@ -300,6 +300,20 @@ public Task<List<Potion>> List(
 // Example result: /Potion/List/123?q=test&sortBy=Id&sortDir=desc&p=1&pageSize=15
 ```
 
+For special cases when you need to override the request options of the ServiceClient for a specific action, you can use the `SetOptions` method before executing the request:
+
+```csharp
+[Action(RequestMethod.GET, route: "/Potion/{id}")]
+public Task<Potion> GetRecurring(int id)
+{
+    SetOptions(options => options.SetRetry(5, TimeSpan.FromSeconds(0.5)));
+
+    return RequestSimple<Potion>(id);
+}
+```
+
+The options configured in `SetOptions` method are only valid for the request executed right after `SetOptions` is called. So, this method should be used only in action methods before executing the request.
+
 ### Network Inspector Editor Window
 
 The Network Inspector is an Editor Window where you can track and debug all HTTP requests made with UnityFetch.<br>

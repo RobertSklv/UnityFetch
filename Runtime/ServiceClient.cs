@@ -11,6 +11,8 @@ namespace UnityFetch
     {
         protected readonly UnityFetchClient client;
 
+        private Action<UnityFetchRequestOptions>? OptionsCallback { get; set; }
+
         public ServiceClient(UnityFetchClient client)
         {
             this.client = client;
@@ -91,6 +93,11 @@ namespace UnityFetch
         protected UnityFetchCoroutineRequestWrapper<object> CoroutineRequestParamsOnly(params object[] parameters)
         {
             return CoroutineRequest<object>(new(), null, parameters);
+        }
+
+        protected void SetOptions(Action<UnityFetchRequestOptions>? optionsCallback)
+        {
+            OptionsCallback = optionsCallback;
         }
 
         protected virtual string GetControllerName()
@@ -186,13 +193,12 @@ namespace UnityFetch
                 }
             }
 
+            Action<UnityFetchRequestOptions>? cachedOptionsCallback = OptionsCallback;
+            OptionsCallback = null;
+
             return client.Request<T>(url, method, body, options =>
             {
-                if (actionAttribute != null)
-                {
-                    if (actionAttribute.RetryCount != null) options.RetryCount = actionAttribute.RetryCount.Value;
-                    if (actionAttribute.RetryDelay != null) options.RetryDelay = actionAttribute.RetryDelay.Value;
-                }
+                cachedOptionsCallback?.Invoke(options);
 
                 options.AddRouteParameters(routeParams);
                 options.AddQueryParameters(queryParams);

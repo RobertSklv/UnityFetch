@@ -10,10 +10,6 @@ namespace UnityFetch
 
         public string Name { get; set; }
 
-        public int? RetryCount { get; set; }
-
-        public TimeSpan? RetryDelay { get; set; }
-
         public ActionAttribute(RequestMethod method, string route)
         {
             this.method = method;

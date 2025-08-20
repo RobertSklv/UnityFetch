@@ -31,7 +31,7 @@ namespace UnityFetch
         [Action(RequestMethod.DELETE, route: "/{:resource}/{id}")]
         public Task Delete([InRoute] int id)
         {
-            return RequestSimpleParamsOnly((object)id);
+            return RequestSimpleParamsOnly(id);
         }
 
         [Action(RequestMethod.GET, route: "/{:resources}")]
