@@ -50,6 +50,8 @@ namespace UnityFetch
 
             Exception? exception = null;
 
+            bool retryCondition;
+
             do
             {
                 UnityFetchResponse<T>? response = null;
@@ -71,7 +73,12 @@ namespace UnityFetch
                     context.Exception = e;
                 }
 
-                if ((context.Exception != null || !response.IsSuccess) && options.ShouldRetryCallback(context))
+                retryCondition = attempts <= options.RetryCount
+                    && !aborted
+                    && (context.Exception != null || !response.IsSuccess)
+                    && options.ShouldRetryCallback(context);
+
+                if (retryCondition)
                 {
                     await Task.Delay((int)options.RetryDelay.TotalMilliseconds);
                 }
@@ -80,7 +87,7 @@ namespace UnityFetch
                     return response;
                 }
                 else throw context.Exception ?? new UnityFetchException("Unexpected Error: Both response and exception are null!");
-            } while (attempts <= options.RetryCount && !aborted);
+            } while (retryCondition);
 
             throw exception ?? new UnityFetchException("Unexpected Error: Failed to process.");
         }
