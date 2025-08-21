@@ -13,5 +13,11 @@
             IsAborted = true;
             AbortSignal.Abort();
         }
+
+        public void Reset()
+        {
+            IsAborted = false;
+            AbortSignal = new();
+        }
     }
 }
