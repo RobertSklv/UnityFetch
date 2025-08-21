@@ -2,6 +2,7 @@
 
 namespace UnityFetch.Editor.Scripts
 {
+    [InitializeOnLoad]
     public static class ClearOnPlayHandler
     {
         static ClearOnPlayHandler()
