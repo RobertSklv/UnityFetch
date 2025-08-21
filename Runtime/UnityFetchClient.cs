@@ -109,8 +109,17 @@ namespace UnityFetch
 
             request.method = method.ToString();
             request.timeout = context.Options.Timeout;
+            bool aborted = false;
 
-            context.Options.AbortController?.AbortSignal.AddListener(() => request.Abort());
+            context.Options.AbortController?.AbortSignal.AddListener(() =>
+            {
+                try
+                {
+                    request.Abort();
+                    aborted = true;
+                }
+                catch (Exception) { }
+            });
 
             context.RequestProcessor = RequestProcessorFactory.Create(method, context.Options.DownloadHandlerType);
 
@@ -146,7 +155,7 @@ namespace UnityFetch
             UpdateRequestInfo(context);
             UF.NotifyRequestFinish(context.RequestInfo);
 
-            return ProcessResponse<T>(context, request);
+            return ProcessResponse<T>(context, request, aborted);
         }
 
         private void GenerateUrl(RequestContext context, string uri)
@@ -192,7 +201,7 @@ namespace UnityFetch
             context.RequestInfo.finished = true;
         }
 
-        private UnityFetchResponse<T> ProcessResponse<T>(RequestContext context, UnityWebRequest request)
+        private UnityFetchResponse<T> ProcessResponse<T>(RequestContext context, UnityWebRequest request, bool aborted)
         {
             TimeSpan timeElapsedTimeSpan = TimeSpan.FromSeconds(context.TimeElapsedSeconds);
 
@@ -224,7 +233,11 @@ namespace UnityFetch
 
             if (context.ResponseCode == 0)
             {
-                throw new UnityFetchTransportException(context.Result);
+                if (aborted)
+                {
+                    Debug.LogError("Request aborted!");
+                }
+                else throw new UnityFetchTransportException(context.Result);
             }
 
             UnityFetchResponse<T> failResponse = new(
