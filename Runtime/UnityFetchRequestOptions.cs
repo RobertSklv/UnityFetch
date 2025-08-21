@@ -217,7 +217,7 @@ namespace UnityFetch
         {
             RetryCount = retryCount;
 
-            if (delay != null)
+            if (delay != default)
             {
                 RetryDelay = delay;
             }
